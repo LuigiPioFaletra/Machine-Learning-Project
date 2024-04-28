@@ -1,0 +1,23 @@
+data:
+  dataset: mnist
+  train_ratio: 0.9
+  data_dir: mnist_data/
+
+training:
+  epochs: 10
+  batch_size: 32
+  learning_rate: 0.001
+  optimizer: adam
+  lr: 0.001
+  warmup_ratio: 0.1
+  validation_split: 0.2
+  checkpoint_dir: checkpoints/
+  device: cuda
+  evaluation_metric: accuracy
+  best_metric_lower_is_better: false
+
+model:
+  input_shape: [28, 28, 1]
+  num_classes: 10
+  hidden_layers: [128, 64]
+  dropout: 0.2
