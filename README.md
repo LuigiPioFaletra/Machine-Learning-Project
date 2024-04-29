@@ -1,5 +1,7 @@
 ## Machine Learning Project Template
 
+This is a template for a machine learning project. The template is intended for the students of the Machine Learning course at UniKore. It provides a basic structure for a machine learning project, including a `README.md` file, a `requirements.txt` file, and a structure for the code.
+
 | | |
 | --- | --- |
 | **Description** | Template for a machine learning project |
@@ -21,8 +23,6 @@
 ---
 
 ### Introduction
-
-This template is primarly intended for the students of the Machine Learning course at UniKore. It provides a basic structure for a machine learning project, including a `README.md` file, a `requirements.txt` file, and a structure for the code.
 
 The template covers a simple use-case of [MNIST](http://yann.lecun.com/exdb/mnist/) dataset classification using a simple Feedforward Neural Network.
 
