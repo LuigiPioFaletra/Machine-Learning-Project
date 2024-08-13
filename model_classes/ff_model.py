@@ -1,38 +1,22 @@
 import torch
 import torch.nn as nn
 
-class FFNN(nn.Module):
-    def __init__(
-        self, 
-        input_size: int,
-        hidden_layers: list,
-        num_classes: int,
-        dropout: float = 0.2
-    ):
-        super(FFNN, self).__init__()
+class FFAudioClassifier(nn.Module):
+    def __init__(self, embedding_dim, num_classes):
+        super(FFAudioClassifier, self).__init__()
         
-        self.input_size = input_size
-        self.hidden_layers = hidden_layers
-        self.num_classes = num_classes
-        
-        self.layers = torch.nn.ModuleList()
-        
-        prev_size = input_size
-        for i, hidden_size in enumerate(hidden_layers):
-            layer = nn.Linear(prev_size, hidden_size)
-            activation = nn.ReLU()
-            dropout_layer = nn.Dropout(p=dropout)
-            self.layers.extend([layer, activation, dropout_layer])
-            prev_size = hidden_size
-            
-        self.output_layer = nn.Linear(prev_size, num_classes)
+        self.fc1 = nn.Linear(embedding_dim, 256)    # First fully connected layer
+        self.relu = nn.ReLU()                       # ReLU activation function
+        self.dropout = nn.Dropout(p=0.5)            # Dropout layer for regularization
+        self.fc2 = nn.Linear(256, num_classes)      # Second fully connected layer
         
     def forward(self, x):
-        x = x.view(-1, self.input_size)
-        
-        for layer in self.layers:
-            x = layer(x)
-        
-        x = self.output_layer(x)
-        
+        # Pass through the first fully connected layer, followed by ReLU and dropout for regularization
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        # Pass through the second fully connected layer to produce the logits for classification
+        x = self.fc2(x)
+
         return x
