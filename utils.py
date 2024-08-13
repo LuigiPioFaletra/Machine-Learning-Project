@@ -4,7 +4,6 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 def compute_metrics(predictions, references):
-
     acc = accuracy_score(references, predictions)
     precision = precision_score(references, predictions, average='macro')
     recall = recall_score(references, predictions, average='macro')
@@ -41,3 +40,8 @@ def evaluate(model, dataloader, criterion, device):
     val_metrics['loss'] = running_loss / len(dataloader)
     
     return val_metrics
+
+def extract_embeddings(audio, embeddings_extractor):
+    if embeddings_extractor:
+        return embeddings_extractor.extract(audio)
+    return audio  # Return the raw audio if no model is specified
