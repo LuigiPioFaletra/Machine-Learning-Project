@@ -1,13 +1,16 @@
-# Third-party imports
+import numpy as np
+import os
 import torch
-from tqdm import tqdm
+import torchaudio
+
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from tqdm import tqdm
 
 def compute_metrics(predictions, references):
-    acc = accuracy_score(references, predictions)
-    precision = precision_score(references, predictions, average='macro')
-    recall = recall_score(references, predictions, average='macro')
-    f1 = f1_score(references, predictions, average='macro')
+    acc = accuracy_score(references, predictions)                               # Compute accuracy of the predictions
+    precision = precision_score(references, predictions, average='macro')       # Compute precision with macro averaging
+    recall = recall_score(references, predictions, average='macro')             # Compute recall with macro averaging
+    f1 = f1_score(references, predictions, average='macro')                     # Compute F1 score with macro averaging
     
     return {
         'accuracy': acc,
@@ -16,32 +19,66 @@ def compute_metrics(predictions, references):
         'f1': f1
     }
 
-def evaluate(model, dataloader, criterion, device):
-    model.eval()
+def evaluate(model, dataloader, loss_fn, device):
+    model.eval()                                                                # Set the model to evaluation mode
     running_loss = 0.0
     predictions = []
     references = []
-    
-    with torch.no_grad():
-        for batch in dataloader:
-            images = batch['image'].to(device)
-            labels = batch['label'].to(device)
-            
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            
-            running_loss += loss.item()
-            
-            pred = torch.argmax(outputs, dim=1)
-            predictions.extend(pred.cpu().numpy())
-            references.extend(labels.cpu().numpy())
-            
-    val_metrics = compute_metrics(predictions, references)
-    val_metrics['loss'] = running_loss / len(dataloader)
-    
-    return val_metrics
 
-def extract_embeddings(audio, embeddings_extractor):
-    if embeddings_extractor:
-        return embeddings_extractor.extract(audio)
-    return audio  # Return the raw audio if no model is specified
+    with torch.no_grad():                                                       # Disable gradient calculation for evaluation
+        for x, y in dataloader:
+            x, y = x.to(device), y.to(device)                                   # Move data to the specified device
+            outputs = model(x)                                                  # Get model predictions
+            loss = loss_fn(outputs, y)                                          # Compute loss
+
+            running_loss += loss.item()                                         # Accumulate loss
+            preds = torch.argmax(outputs, dim=1)                                # Get the predicted class labels
+            predictions.extend(preds.cpu().numpy())                             # Store predictions
+            references.extend(y.cpu().numpy())                                  # Store true labels
+
+    # Compute accuracy only if there are references
+    if len(references) > 0:
+        accuracy = (np.array(references) == np.array(predictions)).mean()
+    else:
+        accuracy = float('nan')                                                 # Set accuracy to NaN if there are no references
+
+    return {
+        "loss": running_loss / len(dataloader),                                 # Average loss over the dataset
+        "accuracy": accuracy                                                    # Accuracy of the model
+    }
+
+def get_audio_path(root, track_id):
+    folder = f'{int(track_id) // 1000:03d}'                                     # Folder based on track ID
+    return os.path.join(root, folder, f'{int(track_id):06d}.mp3')               # Path to audio file
+
+def get_genre_idx(metadata, genre_to_idx, idx):
+    genre = metadata.iloc[idx]['track.7']                                       # Get the genre for the current track
+    return genre_to_idx.get(genre, 0)                                           # Map the genre to an index
+
+def get_track_id(metadata, idx):
+    return metadata.iloc[idx]['Unnamed: 0']                                     # Get the track ID for the given index
+
+def load_audio(audio_path, sample_rate):
+    try:
+        audio, sr = torchaudio.load(audio_path)                                 # Use torchaudio to load the audio file
+    except Exception as e:
+        print(f"\nError loading file {audio_path}: {e}")                        # Move to the next sample if there's an error
+        return None
+
+    if sr != sample_rate:
+        audio = resample_audio(audio, sr, sample_rate)
+    
+    return torch.mean(audio, dim=0)                                             # Convert to mono by averaging across the channels
+
+def process_audio(audio, max_length):
+    if audio.size(0) > max_length:
+        audio = audio[:max_length]                                              # Truncate audio to the max length
+    else:
+        padding = max_length - audio.size(0)
+        audio = torch.nn.functional.pad(audio, (0, padding))                    # Pad the audio if it's shorter
+
+    return audio.unsqueeze(0)                                                   # Add a channel dimension and return audio
+
+def resample_audio(audio, original_sr, target_sr):
+    resampler = torchaudio.transforms.Resample(original_sr, target_sr)          # Resample the audio to the desired sample rate
+    return resampler(audio)
