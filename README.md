@@ -27,8 +27,25 @@ This is a machine learning project realized for the Machine Learning course at U
 The project focuses on classifying musical genres using the smallest [FMA](https://github.com/mdeff/fma) dataset, known as `fma_small`. It employs various machine learning models, including a Support Vector Machine (SVM), based on a Feedforward Neural Network (FFNN), and a Convolutional Neural Network (CNN).
 
 The project is divided into two main scripts:
-- `train.py` for training the model.
+- `train.py` for training and validate the model.
 - `test.py` for testing the model.
+
+The dataset consists of 8000 audio files, divided into 156 folders named **000**, **001**, ... , **010**, **011**, ... , **099**, **100**, ... , **154**, **155**.
+
+Inside the `tracks.csv` file, contained in the compressed archive `fma_metadata.zip`, the audios have already been divided into training, validation, and tests, in the following way:
+- 6400 audios for training.
+- 800 audios for validation.
+- 800 audios for testing.
+
+The **musical genres** to be classified are:
+- Electronic.
+- Experimental.
+- Folk.
+- Hip Hop.
+- Instrumental.
+- International.
+- Pop.
+- Rock.
 
 The dataset is managed by the `fma_dataset.py` class, while the models are defined in the `cnn_model.py`, `ff_model.py` and `svm_model.py` classes.
 
