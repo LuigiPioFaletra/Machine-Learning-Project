@@ -1,11 +1,10 @@
-## Machine Learning Project Template
+## Musical genres recognition of the "fma_small" dataset
 
-This is a template for a machine learning project. The template is intended for the students of the Machine Learning course at UniKore. It provides a basic structure for a machine learning project, including a `README.md` file, a `requirements.txt` file, and a structure for the code.
+This is a machine learning project realized for the Machine Learning course at UniKore. It provides a basic structure for a machine learning project, including a `README.md` file, a `requirements.txt` file, and a structure for the code.
 
 | | |
-| --- | --- |
-| **Description** | Template for a machine learning project |
-| **Author** | [Moreno La Quatra](https://mlaquatra.me) |
+| **Description** | Machine learning project for musical genres recognition |
+| **Author** | Luigi Pio Faletra |
 | **Course** | [Machine Learning @ UniKore](https://unikore.it) |
 | **License** | [MIT](https://opensource.org/licenses/MIT) |
 
@@ -13,7 +12,7 @@ This is a template for a machine learning project. The template is intended for 
 
 ### Table of Contents
 
-- [Machine Learning Project Template](#machine-learning-project-template)
+- [Machine learning project for musical genres recognition](#musical-genres-recognition-of-the-fma_small-dataset)
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
   - [Requirements](#requirements)
@@ -24,19 +23,13 @@ This is a template for a machine learning project. The template is intended for 
 
 ### Introduction
 
-The template covers a simple use-case of [MNIST](http://yann.lecun.com/exdb/mnist/) dataset classification using a simple Feedforward Neural Network.
-
-Students are asked to implement the assignment following the structure provided in this template. The results **must be** reproducible using **only** the code provided in the template. The code must be well-documented and easy to read.
+The project focuses on classifying musical genres using the smallest [FMA](https://github.com/mdeff/fma) dataset, known as `fma_small`. It employs various machine learning models, including a Support Vector Machine (SVM), based on a Feedforward Neural Network (FFNN), and a Convolutional Neural Network (CNN).
 
 The project is divided into two main scripts:
 - `train.py` for training the model.
 - `test.py` for testing the model.
 
-The dataset is managed by the `mnist_dataset.py` class, while the model is defined in the `ff_model.py` class.
-
-> [!IMPORTANT]  
-> The code provided in this template is a simple **minimal** example. Students are encouraged to follow the structure provided in this template and expand it with models and considerations for the personal assignment.
-
+The dataset is managed by the `fma_dataset.py` class, while the models are defined in the `cnn_model.py`, `ff_model.py` and `svm_model.py` classes.
 
 The main idea is that, the project can be reproduced by running the following commands:
 
@@ -48,60 +41,74 @@ python train.py
 python test.py
 ```
 
-The `prepare.sh` script is used to install the requirements for the project and, optionally, to set up the environment (e.g., download the dataset, etc.). The project should be self-contained and reproducible by running the above commands. The code will be evaluated on [Google Colab](https://colab.research.google.com/), so it is recommended to test the code on that platform.
-
-> [!CAUTION]
-> Use the `.gitignore` file to exclude unnecessary files from the repository. For example, the dataset should not be included in the repository. The `.gitignore` file should exclude the pertinent files and directories.
+The `prepare.sh` script is used to install the requirements for the project and, optionally, to set up the environment (e.g., download the dataset, etc.). The project should be self-contained and reproducible by running the above commands.
 
 ---
 
 ### Requirements
 
-The project is based on **Python 3.11** - one of the latest versions of Python at the time of writing. A few considerations:
-- It is recommended to use a virtual environment to manage the dependencies of the project. For example [conda](https://docs.conda.io/en/latest/).
-- The requirements are listed in the `requirements.txt` file and can be installed using `pip install -r requirements.txt`.
+The project is developed using **Python 3.10** - one of the latest versions of Python at the time of writing.
+
+Dependencies are listed in the `requirements.txt` file and can be installed with the command `pip install -r requirements.txt`.
 
 You may want to modify the requirements file to remove unnecessary dependencies or add new ones. This template is based on the following libraries:
-- `torch` for PyTorch.
-- `torchvision` for PyTorch vision.
-- `yaml_config_override` for configuration management.
-- `addict` for configuration management.
+- `librosa` for audio analysis and processing.
+- `numpy` for scientific computing.
+- `pandas` for data manipulation.
+- `scikit-learn` for machine learning algorithms.
 - `tqdm` for progress bars.
+- `torch` for deep learning.
+- `transformers` for pretrained models.
+- `yaml_config_override` for configuration management.
 
 ---
 
 ### Code structure
 
-The code is structured as follows:
+The code is organized as follows:
 
 ```
 main_repository/
 │
+├── config/
+│   ├── base_config.yaml
+│
 ├── data_classes/
-│   ├── mnist_dataset.py
+│   ├── fma_dataset.py
+│
+├── extract_representations/
+│   ├── audio_embeddings.py
 │
 ├── model_classes/
+│   ├── cnn_model.py
 │   ├── ff_model.py
+│   ├── svm_model.py
 │
-├── ...
-│
-├── train.py
+├── .gitignore
+├── LICENSE
+├── prepare.sh
+├── README.md
+├── requirements.txt
 ├── test.py
-└── ...
+├── train.py
+└── utils.py
 ```
 
-- `data_classes/` contains the classes for managing the dataset.
-- `model_classes/` contains the classes for the model design.
-- `train.py` is the script for training the model.
-- `test.py` is the script for testing the model.
+- `config/` contains the file for variables configuration for training, validation and test.
+- `data_classes/` contains the class for managing the dataset.
+- `extract_representations/` contains the class for audio features extraction.
+- `model_classes/` contains the classes for the models design.
+- `.gitignore` specifies which files and folders should be ignored from the Git version control system.
+- `LICENSE` contains the project’s license information.
 - `prepare.sh` is a script for setting up the environment - at the moment it only installs the requirements.
-- `requirements.txt` contains the list of dependencies for the project.
 - `README.md` is the file you are currently reading.
+- `requirements.txt` contains the list of dependencies for the project.
+- `test.py` is the script for testing the model.
+- `train.py` is the script for training and validate the model.
+- `utils.py` is the script that contains utility functions used across the project.
 
 ---
 
 ### License
 
 This project is licensed under the terms of the MIT license. You can find the full license in the `LICENSE` file.
-
-
