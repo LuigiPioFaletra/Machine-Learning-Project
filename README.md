@@ -3,6 +3,7 @@
 This is a machine learning project realized for the Machine Learning course at UniKore. It provides a basic structure for a machine learning project, including a `README.md` file, a `requirements.txt` file, and a structure for the code.
 
 | | |
+| --- | --- |
 | **Description** | Machine learning project for musical genres recognition |
 | **Author** | Luigi Pio Faletra |
 | **Course** | [Machine Learning @ UniKore](https://unikore.it) |
