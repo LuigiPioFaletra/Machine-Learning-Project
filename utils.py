@@ -1,7 +1,7 @@
+import librosa
 import numpy as np
 import os
 import torch
-import torchaudio
 
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from tqdm import tqdm
@@ -60,15 +60,12 @@ def get_track_id(metadata, idx):
 
 def load_audio(audio_path, sample_rate):
     try:
-        audio, sr = torchaudio.load(audio_path)                                 # Use torchaudio to load the audio file
+        audio, sr = librosa.load(audio_path, sr=sample_rate, mono=True)         # Use librosa to load the audio file
     except Exception as e:
         print(f"\nError loading file {audio_path}: {e}")                        # Move to the next sample if there's an error
         return None
-
-    if sr != sample_rate:
-        audio = resample_audio(audio, sr, sample_rate)
     
-    return torch.mean(audio, dim=0)                                             # Convert to mono by averaging across the channels
+    return torch.tensor(audio)                                                  # Convert to mono by averaging across the channels
 
 def process_audio(audio, max_length):
     if audio.size(0) > max_length:
@@ -77,8 +74,4 @@ def process_audio(audio, max_length):
         padding = max_length - audio.size(0)
         audio = torch.nn.functional.pad(audio, (0, padding))                    # Pad the audio if it's shorter
 
-    return audio.unsqueeze(0)                                                   # Add a channel dimension and return audio
-
-def resample_audio(audio, original_sr, target_sr):
-    resampler = torchaudio.transforms.Resample(original_sr, target_sr)          # Resample the audio to the desired sample rate
-    return resampler(audio)
+    return audio
