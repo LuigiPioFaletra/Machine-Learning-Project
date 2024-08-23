@@ -11,8 +11,8 @@ from utils import evaluate
 
 if __name__ == '__main__':
     # Configuration parameters
-    root = os.path.join(os.path.dirname(__file__), 'data', 'fma_small')                 # Path to directory containing audio files
-    metadata_file = os.path.join(os.path.dirname(__file__), 'data', 'tracks.csv')       # Path to CSV file with metadata
+    root = os.path.join(os.path.dirname(__file__), '..', 'fma_small')                 # Path to directory containing audio files
+    metadata_file = os.path.join(os.path.dirname(__file__), '..', 'tracks.csv')       # Path to CSV file with metadata
     sample_rate = 16000                                                                 # Sample rate for audio data
     max_duration = 30                                                                   # Maximum duration of audio clips in seconds
     batch_size = 8                                                                      # Batch size for DataLoader
@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     # Define the model parameters
     in_channels = 1                             # Number of input channels for CNN
-    out_channels = 16                           # Number of output channels in the first convolutional layer
+    out_channels = 512                          # Number of output channels in the first convolutional layer
     input_length = sample_rate * max_duration   # Length of input audio data
     kernel_size = 3                             # Size of the convolutional kernel
     stride = 1                                  # Stride for the convolutional layers
