@@ -13,8 +13,8 @@ from tqdm import tqdm
 from utils import evaluate
 
 # Settings and parameters
-root = os.path.join(os.path.dirname(__file__), 'data', 'fma_small')             # Path to directory containing audio files
-metadata_file = os.path.join(os.path.dirname(__file__), 'data', 'tracks.csv')   # Path to metadata CSV file
+root = os.path.join(os.path.dirname(__file__), '..', 'fma_small')               # Path to directory containing audio files
+metadata_file = os.path.join(os.path.dirname(__file__), '..', 'tracks.csv')     # Path to metadata CSV file
 sample_rate = 16000                                                             # Sample rate for audio files
 max_duration = 30                                                               # Maximum duration in seconds of audio clips
 batch_size = 8                                                                  # Batch size for training and validation
@@ -43,7 +43,7 @@ val_dl_ff = DataLoader(val_ds_ff, batch_size=batch_size, shuffle=False)         
 
 # Define the model
 in_channels = 1                             # Number of input channels for CNN
-out_channels = 16                           # Number of output channels for first convolutional layer
+out_channels = 512                          # Number of output channels for first convolutional layer
 input_length = sample_rate * max_duration   # Length of input audio
 kernel_size = 3                             # Kernel size for convolutional layers
 stride = 1                                  # Stride for convolutional layers
@@ -56,10 +56,10 @@ cnn_model = CNNAudioClassifier(in_channels, out_channels, input_length, kernel_s
 ff_model = FFAudioClassifier(embedding_dim=embedding_dim, num_classes=num_classes).to(device)
 
 # Define loss function and optimizer
-loss_fn_cnn = nn.CrossEntropyLoss()                                     # Loss function for CNN model
-optimizer_cnn = optim.Adam(cnn_model.parameters(), lr=learning_rate)    # Optimizer for CNN model
-loss_fn_ff = nn.CrossEntropyLoss()                                      # Loss function for FF model
-optimizer_ff = optim.Adam(ff_model.parameters(), lr=learning_rate)      # Optimizer for FF model
+loss_fn_cnn = nn.CrossEntropyLoss()                                         # Loss function for CNN model
+optimizer_cnn = optim.Adam(cnn_model.parameters(), lr=learning_rate)        # Optimizer for CNN model
+loss_fn_ff = nn.CrossEntropyLoss()                                          # Loss function for FF model
+optimizer_ff = optim.Adam(ff_model.parameters(), lr=learning_rate)          # Optimizer for FF model
 
 accumulation_steps = 4                      # Number of steps for gradient accumulation
 use_amp = torch.cuda.is_available()         # Flag to check if Automatic Mixed Precision (AMP) should be used
@@ -146,9 +146,9 @@ def check_early_stopping(val_metrics, early_stopping, model, model_name):
         early_stopping["best_val_accuracy"] = val_metrics['accuracy']
         early_stopping["epochs_no_improve"] = 0
         
-        torch.save(model.state_dict(), f"best_{model_name.lower()}_audio_classifier.pth")   # Save the model with the best validation loss
+        torch.save(model.state_dict(), f"best_{model_name.lower()}_audio_classifier.pth")       # Save the model with the best validation loss
     else:
-        early_stopping["epochs_no_improve"] += 1                                            # Increment counter if no improvement
+        early_stopping["epochs_no_improve"] += 1                                                # Increment counter if no improvement
 
     # Check if early stopping criteria are met
     if early_stopping["epochs_no_improve"] >= patience:
