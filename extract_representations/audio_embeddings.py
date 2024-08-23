@@ -20,18 +20,19 @@ class AudioEmbeddings:
         # eval mode
         self.model.eval()
         
-    def extract(self, speech):
+    def extract(self, speech, sampling_rate=16000):
         '''
         Extract embeddings from a speech.
-        
+
         Args:
             speech (str): Speech to extract embeddings from.
-        
+            sampling_rate (int): Sampling rate of the input audio.
+            
         Returns:
             torch.Tensor: Embeddings of the speech.
         '''
         
-        inputs = self.processor(speech, return_tensors="pt", padding="longest")
+        inputs = self.processor(speech, sampling_rate=sampling_rate, return_tensors="pt", padding="longest")
         inputs = {name: tensor.to(self.device) for name, tensor in inputs.items()}
         
         with torch.no_grad():
