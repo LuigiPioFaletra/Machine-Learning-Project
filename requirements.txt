@@ -1,7 +1,8 @@
-torch
-scikit-learn
+librosa
+numpy
 pandas
-git+https://github.com/MorenoLaQuatra/yaml_config_override
-addict
-torchvision
+scikit-learn
 tqdm
+torch
+transformers
+git+https://github.com/MorenoLaQuatra/yaml_config_override
