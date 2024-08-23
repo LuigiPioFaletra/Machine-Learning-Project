@@ -13,7 +13,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils import get_track_id, get_audio_path, get_genre_idx, load_audio, process_audio
 
 class FMADataset(Dataset):
-    def __init__(self, root, metadata_file, data_split, sample_rate=16000, max_duration=30, model_name='ALM/hubert-base-audioset', device='cpu'):
+    def __init__(self, root, metadata_file, data_split, sample_rate=16000, max_duration=30, model_name='ALM/hubert-base-audioset', device=torch.device("cuda" if torch.cuda.is_available() else "cpu")):
         self.root = root                                                                    # Path to the root directory of audio files
         df = pd.read_csv(metadata_file, low_memory=False)                                   # Load metadata from CSV file
         self.metadata = df[(df['set'] == data_split) & (df['set.1'] == 'small')]            # Filter metadata based on the data split and subset
