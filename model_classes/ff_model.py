@@ -1,24 +1,34 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class FFAudioClassifier(nn.Module):
-    def __init__(self, embedding_dim, num_classes):
+    def __init__(self, input_size, hidden_layers, num_classes, dropout):
         super(FFAudioClassifier, self).__init__()
         
-        self.fc1 = nn.Linear(embedding_dim, 256)            # First fully connected layer
-        self.relu = nn.ReLU()                               # ReLU activation function
-        self.dropout = nn.Dropout(p=0.1)                    # Dropout layer for regularization
-        self.fc2 = nn.Linear(256, num_classes)              # Second fully connected layer
+        # Define the fully connected layers
+        self.fc1 = nn.Linear(input_size, hidden_sizes[0])
+        self.fc2 = nn.Linear(hidden_sizes[0], hidden_sizes[1])
+        self.fc3 = nn.Linear(hidden_sizes[1], hidden_sizes[2])
+        self.fc4 = nn.Linear(hidden_sizes[2], num_classes)
+
+        # Dropout Layer: helps prevent overfitting by randomly dropping units during training
+        self.dropout = nn.Dropout(dropout)
         
     def forward(self, x):
-        x = x.view(x.size(0), -1)       # Flatten the tensor from (batch_size, channels, length) to (batch_size, channels * length)
+        # First fully connected layer + ReLU activation
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)         # Apply dropout
         
-        # Pass through the first fully connected layer, followed by ReLU and dropout for regularization
-        x = self.fc1(x)
-        x = self.relu(x)
-        x = self.dropout(x)
-
-        # Pass through the second fully connected layer to produce the logits for classification
-        x = self.fc2(x)
-
+        # Second fully connected layer + ReLU activation
+        x = F.relu(self.fc2(x))
+        x = self.dropout(x)         # Apply dropout
+        
+        # Third fully connected layer + ReLU activation
+        x = F.relu(self.fc3(x))
+        x = self.dropout(x)         # Apply dropout
+        
+        # Output layer
+        x = self.fc4(x)
+        
         return x
