@@ -52,14 +52,14 @@ The dataset is managed by the `fma_dataset.py` class, while the models are defin
 The main idea is that, the project can be reproduced by running the following commands:
 
 ```bash
-git clone [student-repository-url]
-cd [student-repository]
+git clone [repository-url]
+cd [repository]
 bash prepare.sh
-python train.py
-python test.py
+python train.py --config "config/base_config.yaml"
+python test.py --config "config/base_config.yaml"
 ```
 
-The `prepare.sh` script is used to install the requirements for the project and, optionally, to set up the environment (e.g., download the dataset, etc.). The project should be self-contained and reproducible by running the above commands.
+The `prepare.sh` script is used to install the requirements for the project and, optionally, to set up the environment (e.g., download the dataset, download the metadata, etc.). The project should be self-contained and reproducible by running the above commands.
 
 ---
 
@@ -70,12 +70,15 @@ The project is developed using **Python 3.10** - one of the latest versions of P
 Dependencies are listed in the `requirements.txt` file and can be installed with the command `pip install -r requirements.txt`.
 
 You may want to modify the requirements file to remove unnecessary dependencies or add new ones. This template is based on the following libraries:
+- `addict` for nested dictionaries.
+- `cvxopt` for convex optimization problems.
+- `joblib` for trained models saving.
 - `librosa` for audio analysis and processing.
 - `numpy` for scientific computing.
 - `pandas` for data manipulation.
 - `scikit-learn` for machine learning algorithms.
-- `tqdm` for progress bars.
 - `torch` for deep learning.
+- `tqdm` for progress bars.
 - `transformers` for pretrained models.
 - `yaml_config_override` for configuration management.
 
