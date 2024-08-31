@@ -7,7 +7,7 @@ class AudioEmbeddings:
     It uses Wav2Vec2 as a default model.
     '''
     
-    def __init__(self, model_name='ALM/hubert-base-audioset', device=torch.device("cuda" if torch.cuda.is_available() else "cpu")):
+    def __init__(self, model_name='ALM/hubert-base-audioset', device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
         
         self.processor = AutoFeatureExtractor.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name)
