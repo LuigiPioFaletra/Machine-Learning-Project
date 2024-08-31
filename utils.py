@@ -4,13 +4,17 @@ import os
 import torch
 
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
+# import pandas as pd
+# from sklearn.decomposition import PCA
+
 def compute_metrics(predictions, references):
-    acc = accuracy_score(references, predictions)                               # Compute accuracy of the predictions
-    precision = precision_score(references, predictions, average='macro')       # Compute precision with macro averaging
-    recall = recall_score(references, predictions, average='macro')             # Compute recall with macro averaging
-    f1 = f1_score(references, predictions, average='macro')                     # Compute F1 score with macro averaging
+    acc = accuracy_score(references, predictions)                                   # Compute accuracy of the predictions
+    precision = precision_score(references, predictions, average='macro')           # Compute precision with macro averaging
+    recall = recall_score(references, predictions, average='macro')                 # Compute recall with macro averaging
+    f1 = f1_score(references, predictions, average='macro')                         # Compute F1 score with macro averaging
     
     return {
         'accuracy': acc,
@@ -19,59 +23,103 @@ def compute_metrics(predictions, references):
         'f1': f1
     }
 
-def evaluate(model, dataloader, loss_fn, device):
-    model.eval()                                                                # Set the model to evaluation mode
-    running_loss = 0.0
-    predictions = []
-    references = []
+def evaluate(model, dataloader, criterion, device):
+    model.eval()                                                                    # Set the model to evaluation mode                
+    running_loss = 0.0                                                              # Initialize running loss
+    predictions = []                                                                # List to store model predictions
+    references = []                                                                 # List to store true labels
 
-    with torch.no_grad():                                                       # Disable gradient calculation for evaluation
-        for x, y in dataloader:
-            x, y = x.to(device), y.to(device)                                   # Move data to the specified device
-            outputs = model(x)                                                  # Get model predictions
-            loss = loss_fn(outputs, y)                                          # Compute loss
-
-            running_loss += loss.item()                                         # Accumulate loss
-            preds = torch.argmax(outputs, dim=1)                                # Get the predicted class labels
-            predictions.extend(preds.cpu().numpy())                             # Store predictions
-            references.extend(y.cpu().numpy())                                  # Store true labels
-
-    # Compute accuracy only if there are references
-    if len(references) > 0:
-        accuracy = (np.array(references) == np.array(predictions)).mean()
-    else:
-        accuracy = float('nan')                                                 # Set accuracy to NaN if there are no references
-
-    return {
-        "loss": running_loss / len(dataloader),                                 # Average loss over the dataset
-        "accuracy": accuracy                                                    # Accuracy of the model
-    }
+    with torch.no_grad():                                                           # Disable gradient calculation for evaluation
+        for i, (x, y) in enumerate(tqdm(dataloader, desc='\nValidation')):          # Progress bar for validation
+            x, y = x.to(device), y.to(device)                                       # Move data to the specified device (CPU or GPU)
+            outputs = model(x)                                                      # Get model predictions
+            loss = criterion(outputs, y)                                            # Compute loss using the provided criterion
+            running_loss += loss.item()                                             # Accumulate the loss
+            pred = torch.argmax(outputs, dim=1)                                     # Get the predicted class labels (with highest score)
+            predictions.extend(pred.cpu().numpy())                                  # Convert predictions to numpy and store
+            references.extend(y.cpu().numpy())                                      # Convert true labels to numpy and store
+            
+    val_metrics = compute_metrics(predictions, references)                          # Calculate evaluation metrics
+    val_metrics['loss'] = running_loss / len(dataloader)                            # Compute average loss
+    return val_metrics
 
 def get_audio_path(root, track_id):
-    folder = f'{int(track_id) // 1000:03d}'                                     # Folder based on track ID
-    return os.path.join(root, folder, f'{int(track_id):06d}.mp3')               # Path to audio file
+    folder = f'{int(track_id) // 1000:03d}'                                         # Folder structure is based on track ID
+    return os.path.join(root, folder, f'{int(track_id):06d}.mp3')                   # Return full path to the audio file
 
 def get_genre_idx(metadata, genre_to_idx, idx):
-    genre = metadata.iloc[idx]['track.7']                                       # Get the genre for the current track
-    return genre_to_idx.get(genre, 0)                                           # Map the genre to an index
+    genre = metadata.iloc[idx]['track.7']                                           # Get the genre from metadata (assuming 'track.7' is the genre column)
+    return genre_to_idx.get(genre, 0)                                               # Map the genre to an index using genre_to_idx dictionary
 
 def get_track_id(metadata, idx):
-    return metadata.iloc[idx]['Unnamed: 0']                                     # Get the track ID for the given index
+    return metadata.iloc[idx]['Unnamed: 0']                                         # Get the track ID from metadata (assuming 'Unnamed: 0' is the track ID column)
 
 def load_audio(audio_path, sample_rate):
     try:
-        audio, sr = librosa.load(audio_path, sr=sample_rate, mono=True)         # Use librosa to load the audio file
+        audio, sr = librosa.load(audio_path, sr=sample_rate, mono=True)             # Load the audio file in mono format
     except Exception as e:
-        print(f"\nError loading file {audio_path}: {e}")                        # Move to the next sample if there's an error
-        return None
+        print(f'\nError loading file {audio_path}: {e}')                            # Print an error message if the file fails to load
+        return None                                                                 # Return None if there's an error
     
-    return torch.tensor(audio)                                                  # Convert to mono by averaging across the channels
+    return torch.tensor(audio)                                                      # Convert the loaded audio to a PyTorch tensor
 
 def process_audio(audio, max_length):
     if audio.size(0) > max_length:
-        audio = audio[:max_length]                                              # Truncate audio to the max length
+        audio = audio[:max_length]                                                  # Truncate the audio to the maximum length
     else:
         padding = max_length - audio.size(0)
-        audio = torch.nn.functional.pad(audio, (0, padding))                    # Pad the audio if it's shorter
+        audio = torch.nn.functional.pad(audio, (0, padding))                        # Pad the audio with zeros if it's shorter than max_length
 
     return audio
+        
+def extract_and_preprocess_data(model, dataloader, device, split):
+    model.model.eval()                                                              # Set the model to evaluation mode
+    embeddings = []                                                                 # List to store extracted embeddings
+    labels = []                                                                     # List to store corresponding labels
+
+    with torch.no_grad():                                                           # Disable gradient calculation
+        for x, y in tqdm(dataloader, desc=f'\n{split.capitalize()} embeddings and labels extracting'):
+            x = x.numpy()                                                           # Convert input data to numpy array
+            x = [model.extract(speech=audio_file) for audio_file in x]              # Extract embeddings for each audio file using the model
+            x = np.array(x)                                                         # Convert list of embeddings to numpy array
+            x = np.mean(x, axis=1)                                                  # Average the embeddings along the time axis
+            embeddings.append(x)                                                    # Store the embeddings
+            labels.append(y.numpy())                                                # Store the labels
+
+    embeddings = np.concatenate(embeddings, axis=0)                                 # Concatenate all embeddings
+    labels = np.concatenate(labels, axis=0)                                         # Concatenate all labels
+    
+    # Normalize embeddings
+    scaler = StandardScaler()                                                       # Initialize a standard scaler
+    embeddings = scaler.fit_transform(embeddings)                                   # Normalize the embeddings
+    """
+    Optional: dimensionality reduction
+    pca = PCA(n_components=50)                                                      # Initialize PCA for dimensionality reduction
+    embeddings = pca.fit_transform(embeddings)                                      # Apply PCA to reduce dimensionality of embeddings
+    """
+    return embeddings, labels
+
+def save_data(embeddings, labels, prefix):
+    os.makedirs(config.training.npy_dir, exist_ok=True)
+    np.save(f'{config.training.npy_dir}/{prefix}_embeddings.npy', embeddings)       # Save embeddings as a numpy file
+    np.save(f'{config.training.npy_dir}/{prefix}_labels.npy', labels)               # Save labels as a numpy file
+    print(f'{prefix.capitalize()} embeddings and labels saved in .npy files')
+    """
+    # Optional: save embeddings and labels in CSV files
+    # Save embeddings in a separate CSV
+    embeddings_str = [' '.join(map(str, emb)) for emb in embeddings]                # Convert embeddings to string format
+    embeddings_df = pd.DataFrame(embeddings_str, columns=['embedding'])
+    embeddings_df.to_csv(f'{config.training.npy_dir}/{prefix}_embeddings.csv', index=False)
+
+    # Save labels in a separate CSV
+    labels_df = pd.DataFrame(labels, columns=['label'])
+    labels_df.to_csv(f'{config.training.npy_dir}/{prefix}_labels.csv', index=False)
+
+    # Save embeddings and labels together in a combined CSV
+    df = pd.DataFrame({
+        'embeddings': embeddings_str,                                               # Store embeddings as a column in a DataFrame
+        'label': labels                                                             # Store labels as a column in a DataFrame
+    })
+    df.to_csv(f'{config.training.npy_dir}/{prefix}_embeddings_labels.csv', index=False)
+    print(f'{prefix.capitalize()} embeddings and labels saved in .csv files')
+    """
