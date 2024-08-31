@@ -1,8 +1,11 @@
+addict
+cvxopt
+joblib
 librosa
 numpy
 pandas
 scikit-learn
-tqdm
 torch
+tqdm
 transformers
 git+https://github.com/MorenoLaQuatra/yaml_config_override
