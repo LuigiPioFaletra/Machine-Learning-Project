@@ -1,23 +1,36 @@
 data:
-  dataset: mnist
-  train_ratio: 0.9
-  data_dir: mnist_data/
+  dataset_dir: fma_small_data/fma_small
+  metadata_file: fma_small_data/tracks.csv
 
 training:
   epochs: 10
   batch_size: 32
   learning_rate: 0.001
   optimizer: adam
-  lr: 0.001
   warmup_ratio: 0.1
-  validation_split: 0.2
+  sample_rate: 16000
+  max_duration: 30
   checkpoint_dir: checkpoints/
+  npy_dir: NPY/
   device: cuda
   evaluation_metric: accuracy
   best_metric_lower_is_better: false
 
 model:
-  input_shape: [28, 28, 1]
-  num_classes: 10
-  hidden_layers: [128, 64]
-  dropout: 0.2
+  input_size: 768
+  hidden_sizes: [512, 256, 128]
+  num_classes: 8
+  dropout: 0.1
+
+filename:
+  train_embeddings: training_embeddings.npy
+  train_labels: training_labels.npy
+  val_embeddings: validation_embeddings.npy
+  val_labels: validation_labels.npy
+  test_embeddings: test_embeddings.npy
+  test_labels: test_labels.npy
+
+split:
+  train: training
+  val: validation
+  test: test
