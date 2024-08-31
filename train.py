@@ -1,185 +1,229 @@
-import contextlib
+import joblib
 import numpy as np
 import os
 import torch
 import torch.nn as nn
-import torch.optim as optim
 
+from addict import Dict
 from data_classes.fma_dataset import FMADataset
+from extract_representations.audio_embeddings import AudioEmbeddings
 from model_classes.cnn_model import CNNAudioClassifier
 from model_classes.ff_model import FFAudioClassifier
-from torch.utils.data import DataLoader
+from model_classes.svm_model import SVMAudioClassifier
+from sklearn.model_selection import GridSearchCV
+from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
-from utils import evaluate
+from utils import compute_metrics, evaluate, extract_and_preprocess_data, save_data
+from yaml_config_override.yaml_config_override import add_arguments
 
-# Settings and parameters
-root = os.path.join(os.path.dirname(__file__), '..', 'fma_small')               # Path to directory containing audio files
-metadata_file = os.path.join(os.path.dirname(__file__), '..', 'tracks.csv')     # Path to metadata CSV file
-sample_rate = 16000                                                             # Sample rate for audio files
-max_duration = 30                                                               # Maximum duration in seconds of audio clips
-batch_size = 8                                                                  # Batch size for training and validation
-num_epochs = 1                                                                  # Number of epochs for training
-learning_rate = 0.001                                                           # Learning rate for the optimizer
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")           # Use GPU if available, otherwise use CPU
-
-# Early stopping parameters
-patience = 5                    # Number of epochs with no improvement after which training will be stopped
-best_val_loss = float('inf')    # Initialize best validation loss to infinity
-best_val_accuracy = 0           # Initialize best validation accuracy to 0
-epochs_no_improve = 0           # Counter for epochs with no improvement
-early_stop = False              # Flag to indicate if early stopping should be triggered
-
-# Load data
-train_ds_cnn = FMADataset(root, metadata_file, 'training', sample_rate, max_duration)   # Training dataset for CNN model
-val_ds_cnn = FMADataset(root, metadata_file, 'validation', sample_rate, max_duration)   # Validation dataset for CNN model
-train_ds_ff = FMADataset(root, metadata_file, 'training', sample_rate, max_duration)    # Training dataset for FF model
-val_ds_ff = FMADataset(root, metadata_file, 'validation', sample_rate, max_duration)    # Validation dataset for FF model
-
-# Create DataLoaders for both models
-train_dl_cnn = DataLoader(train_ds_cnn, batch_size=batch_size, shuffle=True)    # DataLoader for training CNN model
-val_dl_cnn = DataLoader(val_ds_cnn, batch_size=batch_size, shuffle=False)       # DataLoader for validation CNN model
-train_dl_ff = DataLoader(train_ds_ff, batch_size=batch_size, shuffle=True)      # DataLoader for training FF model
-val_dl_ff = DataLoader(val_ds_ff, batch_size=batch_size, shuffle=False)         # DataLoader for validation FF model
-
-# Define the model
-in_channels = 1                             # Number of input channels for CNN
-out_channels = 512                          # Number of output channels for first convolutional layer
-input_length = sample_rate * max_duration   # Length of input audio
-kernel_size = 3                             # Kernel size for convolutional layers
-stride = 1                                  # Stride for convolutional layers
-padding = 1                                 # Padding for convolutional layers
-num_classes = len(train_ds_cnn.genres)      # Number of output classes, which coincides with the number of genres
-embedding_dim = 768                         # Dimensionality of embeddings, that depends on pre-trained model used
-
-# Instantiate models
-cnn_model = CNNAudioClassifier(in_channels, out_channels, input_length, kernel_size, stride, padding, num_classes).to(device)
-ff_model = FFAudioClassifier(embedding_dim=embedding_dim, num_classes=num_classes).to(device)
-
-# Define loss function and optimizer
-loss_fn_cnn = nn.CrossEntropyLoss()                                         # Loss function for CNN model
-optimizer_cnn = optim.Adam(cnn_model.parameters(), lr=learning_rate)        # Optimizer for CNN model
-loss_fn_ff = nn.CrossEntropyLoss()                                          # Loss function for FF model
-optimizer_ff = optim.Adam(ff_model.parameters(), lr=learning_rate)          # Optimizer for FF model
-
-accumulation_steps = 4                      # Number of steps for gradient accumulation
-use_amp = torch.cuda.is_available()         # Flag to check if Automatic Mixed Precision (AMP) should be used
-
-# Use Automatic Mixed Precision (AMP) if CUDA is available
-if use_amp:
-    from torch.cuda.amp import autocast, GradScaler
-    scaler = GradScaler()       # Gradient scaler for mixed precision
-else:
-    from contextlib import nullcontext
-    autocast = nullcontext      # No-op context manager to use when AMP is not used
-    scaler = None
-
-def train_one_epoch(model, dataloader, loss_fn, optimizer, device, accumulation_steps=4, scaler=None):
-    model.train()                                                           # Set the model to training mode
-    p_bar = tqdm(dataloader, desc="\nTraining")                             # Progress bar for training
+def train_one_epoch(model, dataloader, loss_fn, optimizer, scheduler, device):
+    model.train()                                               # Set the model to training mode                      
     running_loss = 0.0
     predictions = []
     references = []
-    optimizer.zero_grad()                                                   # Zero the gradients of the optimizer
     
-    for i, (x, y) in enumerate(p_bar):
-        try:
-            x, y = x.to(device), y.to(device)                               # Move data to the specified device
+    # Loop over batches in the dataloader
+    for i, (x, y) in enumerate(tqdm(dataloader, desc='\nTraining')):
+        x, y = x.to(device), y.to(device)                       # Move data to the specified device
+        optimizer.zero_grad()                                   # Zero the gradients
+        outputs = model(x)                                      # Forward pass: compute model predictions
+        loss = loss_fn(outputs, y)                              # Compute the loss
+        loss.backward()                                         # Backward pass: compute gradients
+        optimizer.step()                                        # Update model weights
+        scheduler.step()                                        # Update learning rate if scheduler is defined
+        running_loss += loss.item()                             # Accumulate the loss
+        pred = torch.argmax(outputs, dim=1)                     # Get predicted class labels
+        predictions.extend(pred.cpu().numpy())                  # Store predictions
+        references.extend(y.cpu().numpy())                      # Store true labels
 
-            with autocast():                                                # Use automatic mixed precision if enabled
-                outputs = model(x)                                          # Forward pass
-                loss = loss_fn(outputs, y)                                  # Compute loss
-
-            if scaler:
-                scaler.scale(loss).backward()                               # Scale and backward pass if using mixed precision
-            else:
-                loss.backward()                                             # Regular backward pass
-            
-            if (i + 1) % accumulation_steps == 0:
-                if scaler:
-                    scaler.step(optimizer)                                  # Step the optimizer if using mixed precision
-                    scaler.update()                                         # Update the scaler
-                else:
-                    optimizer.step()                                        # Regular optimizer step
-                optimizer.zero_grad()                                       # Zero the gradients for the next step
-
-            running_loss += loss.item()                                     # Accumulate loss
-            preds = torch.argmax(outputs, dim=1)                            # Get predicted class labels
-            predictions.extend(preds.cpu().numpy())                         # Store predictions
-            references.extend(y.cpu().numpy())                              # Store true labels
-            p_bar.set_postfix({"loss": running_loss / len(dataloader)})     # Update progress bar with current loss
-        
-        except Exception as e:
-            print(f"An error occurred while processing the batch: {str(e)}")
-            continue
+    train_metrics = compute_metrics(predictions, references)    # Compute training metrics
+    train_metrics['loss'] = running_loss / len(dataloader)      # Average loss
+    return train_metrics                                        # Return computed metrics
     
-    # Compute accuracy only if there are references
-    if len(references) > 0:
-        accuracy = (np.array(references) == np.array(predictions)).mean()
+def manage_best_model_and_metrics(model, evaluation_metric, val_metrics, best_val_metric, best_model, lower_is_better):
+    if lower_is_better:
+        is_best = val_metrics[evaluation_metric] < best_val_metric
     else:
-        accuracy = float('nan')                     # Set accuracy to NaN if there are no references
-
-    return {
-        "loss": running_loss / len(dataloader),     # Average loss over the epoch
-        "accuracy": accuracy                        # Accuracy of the model
-    }
-
-# Early stopping parameters
-def init_early_stopping():
-    return {
-        "best_val_loss": float('inf'),              # Initialize best validation loss to infinity
-        "best_val_accuracy": 0,                     # Initialize best validation accuracy
-        "epochs_no_improve": 0,                     # Counter for epochs with no improvement
-        "early_stop": False                         # Flag to indicate if early stopping should be triggered
-    }
-
-# Define models, dataloaders, loss functions, and optimizers
-models = [
-    {"name": "CNN", "model": cnn_model, "train_dl": train_dl_cnn, "val_dl": val_dl_cnn, "loss_fn": loss_fn_cnn, "optimizer": optimizer_cnn, "early_stopping": init_early_stopping()},
-    {"name": "FF", "model": ff_model, "train_dl": train_dl_ff, "val_dl": val_dl_ff, "loss_fn": loss_fn_ff, "optimizer": optimizer_ff, "early_stopping": init_early_stopping()}
-]
-
-def check_early_stopping(val_metrics, early_stopping, model, model_name):
-    if val_metrics['loss'] < early_stopping["best_val_loss"]:
-
-        # Update best validation loss and accuracy
-        early_stopping["best_val_loss"] = val_metrics['loss']
-        early_stopping["best_val_accuracy"] = val_metrics['accuracy']
-        early_stopping["epochs_no_improve"] = 0
+        is_best = val_metrics[evaluation_metric] > best_val_metric
         
-        torch.save(model.state_dict(), f"best_{model_name.lower()}_audio_classifier.pth")       # Save the model with the best validation loss
-    else:
-        early_stopping["epochs_no_improve"] += 1                                                # Increment counter if no improvement
+    # If the current model is the best, update the best model and metric
+    if is_best:
+        print(f'New best model found with val {evaluation_metric}: {val_metrics[evaluation_metric]:.4f}')
+        best_val_metric = val_metrics[evaluation_metric]
+        best_model = model
+        
+    return best_val_metric, best_model
 
-    # Check if early stopping criteria are met
-    if early_stopping["epochs_no_improve"] >= patience:
-        print(f"No improvement for {patience} epochs in {model_name}, stopping early.")
-        early_stopping["early_stop"] = True
+def data_extraction_and_saving(root, metadata_file, sample_rate, max_duration, batch_size, device, split):
+    model = AudioEmbeddings()           # Instantiate the embedding extraction model
+
+    if split == 'training':
+        train_ds = FMADataset(root, metadata_file, split, sample_rate, max_duration)                    # Load training dataset
+        train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0)             # Create training dataloader
+        train_embeddings, train_labels = extract_and_preprocess_data(model, train_dl, device, split)    # Extract embeddings and labels
+        save_data(train_embeddings, train_labels, split)                                                # Save the extracted embeddings and labels
+        return train_embeddings, train_labels                                                           # Return training embeddings and labels
+    elif split == 'validation':
+        val_ds = FMADataset(root, metadata_file, split, sample_rate, max_duration)                      # Load validation dataset
+        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=0)                # Create validation dataloader
+        val_embeddings, val_labels = extract_and_preprocess_data(model, val_dl, device, split)          # Extract validation embeddings and labels
+        save_data(val_embeddings, val_labels, split)                                                    # Save the extracted embeddings and labels
+        return val_embeddings, val_labels                                                               # Return validation embeddings and labels
+    elif split == 'test':
+        test_ds = FMADataset(root, metadata_file, split, sample_rate, max_duration)                     # Load test dataset
+        test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=0)              # Create test dataloader
+        test_embeddings, test_labels = extract_and_preprocess_data(model, test_dl, device, split)       # Extract test embeddings and labels
+        save_data(test_embeddings, test_labels, split)                                                  # Save the extracted embeddings and labels
+        return test_embeddings, test_labels                                                             # Return test embeddings and labels
 
 
 if __name__ == '__main__':
-    # Training loop with early stopping for both models
-    for epoch in range(num_epochs):
-        if any(m["early_stopping"]["early_stop"] for m in models):
-            print("Early stopping for one or more models")
-            break
+    config = Dict(add_arguments())      # Load configuration from YAML file
+    device = torch.device('cuda' if torch.cuda.is_available() and config.training.device == 'cuda' else 'cpu')
+    
+    # Check if training embeddings and labels already exist, otherwise extract and save them
+    if not (os.path.exists(config.filename.train_embeddings) and os.path.exists(config.filename.train_labels)):
+        train_emb, train_lab = data_extraction_and_saving(config.data.dataset_dir,
+                                                          config.data.metadata_file,
+                                                          config.training.sample_rate,
+                                                          config.training.max_duration,
+                                                          config.training.batch_size,
+                                                          config.training.device,
+                                                          config.split.train)
+    else:
+        # Load pre-saved train embeddings and labels from files
+        train_emb = np.load(config.filename.train_embeddings)
+        train_lab = np.load(config.filename.train_labels)
+
+    # Check if validation embeddings and labels already exist, otherwise extract and save them
+    if not (os.path.exists(config.filename.val_embeddings) and os.path.exists(config.filename.val_labels)):
+        val_emb, val_lab = data_extraction_and_saving(config.data.dataset_dir,
+                                                      config.data.metadata_file,
+                                                      config.training.sample_rate,
+                                                      config.training.max_duration,
+                                                      config.training.batch_size,
+                                                      config.training.device,
+                                                      config.split.val)
+    else:
+        # Load pre-saved validation embeddings and labels from files
+        val_emb = np.load(config.filename.val_embeddings)
+        val_lab = np.load(config.filename.val_labels)
         
-        try:
-            for m in models:
-                if m["early_stopping"]["early_stop"]:
-                    continue                                                                    # Skip training for this model if early stopping was triggered
-                
-                # Training
-                train_metrics = train_one_epoch(m["model"], m["train_dl"], m["loss_fn"], m["optimizer"], device, accumulation_steps, scaler)
-                val_metrics = evaluate(m["model"], m["val_dl"], m["loss_fn"], device)
-                
-                print(f"Epoch {epoch+1}/{num_epochs} - {m['name']} Model")
-                print(f"Train Loss: {train_metrics['loss']:.4f}, Train Accuracy: {train_metrics['accuracy']:.4f}")
-                print(f"Validation Loss: {val_metrics['loss']:.4f}, Validation Accuracy: {val_metrics['accuracy']:.4f}")
-                check_early_stopping(val_metrics, m["early_stopping"], m["model"], m["name"])   # Check for early stopping
+    # Check if test embeddings and labels already exist, otherwise extract and save them
+    if not (os.path.exists(config.filename.test_embeddings) and os.path.exists(config.filename.test_labels)):
+        test_emb, test_lab = data_extraction_and_saving(config.data.dataset_dir,
+                                                        config.data.metadata_file,
+                                                        config.training.sample_rate,
+                                                        config.training.max_duration,
+                                                        config.training.batch_size,
+                                                        config.training.device,
+                                                        config.split.test)
+    else:
+        # Load pre-saved test embeddings and labels from files
+        test_emb = np.load(config.filename.test_embeddings)
+        test_lab = np.load(config.filename.test_labels)
+
+    # Convert embeddings and labels to tensors
+    train_emb_tensor = torch.tensor(train_emb, dtype=torch.float32)
+    train_lab_tensor = torch.tensor(train_lab, dtype=torch.long)
+    val_emb_tensor = torch.tensor(val_emb, dtype=torch.float32)
+    val_lab_tensor = torch.tensor(val_lab, dtype=torch.long)
+    test_emb_tensor = torch.tensor(test_emb, dtype=torch.float32)
+    test_lab_tensor = torch.tensor(test_lab, dtype=torch.long)
+
+    # Create TensorDatasets for training, validation, and test sets
+    train_ds = TensorDataset(train_emb_tensor, train_lab_tensor)
+    val_ds = TensorDataset(val_emb_tensor, val_lab_tensor)
+    test_ds = TensorDataset(test_emb_tensor, test_lab_tensor)
+    
+    # Create DataLoaders for the datasets
+    train_dl = DataLoader(train_ds, config.training.batch_size, shuffle=True, num_workers=0)
+    val_dl = DataLoader(val_ds, config.training.batch_size, shuffle=False, num_workers=0)
+    test_dl = DataLoader(test_ds, config.training.batch_size, shuffle=True, num_workers=0)
+    
+    # Instantiate the CNN, FF, and SVM models
+    cnn_model = CNNAudioClassifier(config.model.num_classes,
+                                   config.model.dropout).to(device)
+    ff_model = FFAudioClassifier(config.model.input_size,
+                                 config.model.hidden_layers,
+                                 config.model.num_classes,
+                                 config.model.dropout).to(device)
+    svm_model = SVMAudioClassifier()
+
+    cnn_model.to(device)
+    ff_model.to(device)
+    
+    # Define loss function and optimizer
+    criterion = nn.CrossEntropyLoss()
+    cnn_optimizer = torch.optim.Adam(cnn_model.parameters(), lr=config.training.learning_rate)
+    ff_optimizer = torch.optim.Adam(ff_model.parameters(), lr=config.training.learning_rate)
+
+    # Learning rate scheduler for warmup and decay
+    total_steps = len(train_dl) * config.training.epochs
+    warmup_steps = int(total_steps * config.training.warmup_ratio)
+    
+    # Warmup + linear decay schedule
+    scheduler_lambda = lambda step: (step / warmup_steps) if step < warmup_steps else max(0.0, (total_steps - step) /
+                                                                                          (total_steps - warmup_steps))
+    cnn_scheduler = torch.optim.lr_scheduler.LambdaLR(cnn_optimizer, lr_lambda=scheduler_lambda)
+    ff_scheduler = torch.optim.lr_scheduler.LambdaLR(ff_optimizer, lr_lambda=scheduler_lambda)
+
+    # List of models to train
+    models = [('CNN', cnn_model, cnn_optimizer, cnn_scheduler),
+              ('FF', ff_model, ff_optimizer, ff_scheduler)]
+
+    for model_name, model, optimizer, scheduler in models:
+        # Initialize best validation metric and model
+        best_val_metric = float('inf') if config.training.best_metric_lower_is_better else float('-inf')
+        best_model = None
         
-        except Exception as e:
-            print(f"An error occurred during epoch {epoch+1}: {str(e)}")
-        
-        # Clear CUDA cache if using GPU
-        if device.type == 'cuda':
-            torch.cuda.empty_cache()
+        for epoch in range(config.training.epochs):
+            print(f'Epoch {epoch+1}/{config.training.epochs}')
+            
+            # Train for one epoch and evaluate on validation set
+            train_metrics = train_one_epoch(model, train_dl, criterion, optimizer, scheduler, device)
+            val_metrics = evaluate(model, val_dl, criterion, device)
+            print(f'Train loss: {train_metrics["loss"]:.4f} - Train accuracy: {train_metrics["accuracy"]:.4f}')
+            print(f'Val loss: {val_metrics["loss"]:.4f} - Val accuracy: {val_metrics["accuracy"]:.4f}')
+            
+            # Update best model if validation performance improves
+            best_val_metric, best_model = manage_best_model_and_metrics(
+                model, 
+                config.training.evaluation_metric, 
+                val_metrics, 
+                best_val_metric, 
+                best_model, 
+                config.training.best_metric_lower_is_better
+            )
+
+        # Save the best model
+        os.makedirs(config.training.checkpoint_dir, exist_ok=True)
+        torch.save(best_model.state_dict(), f'{config.training.checkpoint_dir}/best_model.pt')
+        print('Model saved.')
+
+    # After training CNN and FF models, use the FF model to extract features for SVM
+    ff_model.eval()
+    with torch.no_grad():
+        train_features = ff_model(torch.tensor(train_emb, dtype=torch.float32).to(device)).cpu().numpy()
+        val_features = ff_model(torch.tensor(val_emb, dtype=torch.float32).to(device)).cpu().numpy()
+
+    # Define SVM and perform Grid Search for hyperparameter tuning
+    param_grid = {
+        'C': [0.1, 1, 10],
+        'gamma': ['scale', 'auto'],
+        'kernel': ['linear', 'rbf']
+    }
+    
+    grid_search = GridSearchCV(svm_model, param_grid, cv=5, scoring='accuracy')
+    grid_search.fit(train_features, train_lab)
+    best_svm = grid_search.best_estimator_
+    print(best_svm)
+
+    # Save the best SVM model
+    joblib.dump(best_svm, f'{config.training.checkpoint_dir}/best_svm_model.pkl')
+    print('SVM Model saved.')
+
+    # Evaluate SVM on validation and test sets
+    val_predictions = best_svm.predict(val_features)
+    val_accuracy = np.mean(val_predictions == val_lab)
+    print(f'SVM Val Accuracy: {val_accuracy:.4f}')
