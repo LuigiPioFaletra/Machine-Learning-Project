@@ -1,4 +1,5 @@
 import joblib
+import numpy as np
 import os
 import torch
 import torch.nn as nn
@@ -6,7 +7,6 @@ import torch.nn as nn
 from addict import Dict
 from model_classes.cnn_model import CNNAudioClassifier
 from model_classes.ff_model import FFAudioClassifier
-from model_classes.svm_model import SVMAudioClassifier
 from torch.utils.data import DataLoader, TensorDataset
 from train import data_extraction_and_saving
 from utils import evaluate
@@ -17,7 +17,7 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() and config.training.device == 'cuda' else 'cpu')
     
     # Check if test embeddings and labels already exist, otherwise extract and save them
-    if not (os.path.exists(config.filename.test_embeddings) and os.path.exists(config.filename.test_labels)):
+    if not (os.path.exists(f'{config.training.npy_dir}/{config.filename.test_embeddings}') and os.path.exists(f'{config.training.npy_dir}/{config.filename.test_labels}')):
         test_emb, test_lab = data_extraction_and_saving(config.data.dataset_dir,
                                                         config.data.metadata_file,
                                                         config.training.sample_rate,
@@ -27,8 +27,8 @@ if __name__ == '__main__':
                                                         config.split.test)
     # Load pre-saved test embeddings and labels from files
     else:
-        test_emb = np.load(config.filename.test_embeddings)
-        test_lab = np.load(config.filename.test_labels)
+        test_emb = np.load(f'{config.training.npy_dir}/{config.filename.test_embeddings}')
+        test_lab = np.load(f'{config.training.npy_dir}/{config.filename.test_labels}')
 
     # Convert the test embeddings and labels to tensors
     test_emb_tensor = torch.tensor(test_emb, dtype=torch.float32)
@@ -39,20 +39,20 @@ if __name__ == '__main__':
     test_dl = DataLoader(test_ds, config.training.batch_size, shuffle=True, num_workers=0)
     
     # Instantiate the CNN and FF models
-    cnn_model = CNNAudioClassifier(config.model.num_classes,
+    cnn_model = CNNAudioClassifier(config.model.input_size,
+                                   config.model.num_classes,
                                    config.model.dropout).to(device)
     ff_model = FFAudioClassifier(config.model.input_size,
                                  config.model.hidden_layers,
                                  config.model.num_classes,
                                  config.model.dropout).to(device)
-    svm_model = SVMAudioClassifier()
 
-    # Load the pre-trained model weights for the CNN, FF, and SVM models
-    cnn_model.load_state_dict(torch.load(f'{config.training.checkpoint_dir}/best_model.pt'))
+    # Load the pre-trained model weights for the CNN, FF and SVM models
+    cnn_model.load_state_dict(torch.load(f'{config.training.checkpoint_dir}/{config.best.cnn}'))
     print('CNN Model loaded.')
-    ff_model.load_state_dict(torch.load(f'{config.training.checkpoint_dir}/best_model.pt'))
+    ff_model.load_state_dict(torch.load(f'{config.training.checkpoint_dir}/{config.best.ff}'))
     print('FF Model loaded.')
-    best_svm = joblib.load(f'{config.training.checkpoint_dir}/best_svm_model.pkl')
+    svm_model = joblib.load(f'{config.training.checkpoint_dir}/{config.best.svm}')
     print('SVM Model loaded.')
 
     criterion = nn.CrossEntropyLoss()                                   # Define the loss function for evaluation
@@ -66,10 +66,12 @@ if __name__ == '__main__':
         for key, value in test_metrics.items():
             print(f'{model_name} Model Test {key}: {value:.4f}')
 
+    # After evaluate CNN and FF models, use the FF model to extract features on test set for SVM
     ff_model.eval()
     with torch.no_grad():
         test_features = ff_model(test_emb_tensor.to(device)).cpu().numpy()
 
-    test_predictions = best_svm.predict(test_features)
+    # Evaluate SVM on test set
+    test_predictions = svm_model.predict(test_features)
     test_accuracy = np.mean(test_predictions == test_lab)
     print(f'SVM Model Test Accuracy: {test_accuracy:.4f}')
