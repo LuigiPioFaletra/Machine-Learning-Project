@@ -47,7 +47,7 @@ The **musical genres** to be classified are:
 - Pop.
 - Rock.
 
-The dataset is managed by the `fma_dataset.py` class, while the models are defined in the `cnn_model.py`, `ff_model.py` and `svm_model.py` classes.
+The dataset is managed by the `fma_dataset.py` class, while the models are defined in the `cnn_model.py` and `ff_model.py` classes. The SVM model is implemented by calling the SVC class from the scikit-learn library.
 
 The main idea is that, the project can be reproduced by running the following commands:
 
@@ -71,7 +71,6 @@ Dependencies are listed in the `requirements.txt` file and can be installed with
 
 You may want to modify the requirements file to remove unnecessary dependencies or add new ones. This template is based on the following libraries:
 - `addict` for nested dictionaries.
-- `cvxopt` for convex optimization problems.
 - `joblib` for trained models saving.
 - `librosa` for audio analysis and processing.
 - `numpy` for scientific computing.
@@ -103,7 +102,6 @@ main_repository/
 ├── model_classes/
 │   ├── cnn_model.py
 │   ├── ff_model.py
-│   ├── svm_model.py
 │
 ├── .gitignore
 ├── LICENSE
