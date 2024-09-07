@@ -1,5 +1,4 @@
 addict
-cvxopt
 joblib
 librosa
 numpy
