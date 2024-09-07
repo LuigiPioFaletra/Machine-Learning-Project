@@ -47,7 +47,7 @@ The **musical genres** to be classified are:
 - Pop.
 - Rock.
 
-The dataset is managed by the `fma_dataset.py` class, while the models are defined in the `cnn_model.py` and `ff_model.py` classes. The SVM model is implemented by calling the SVC class from the scikit-learn library.
+The dataset is managed by the `fma_dataset.py` class, while the models are defined in the `cnn_model.py` and `ff_model.py` classes. The **SVM model** is implemented by calling the `SVC` class from the scikit-learn library.
 
 The main idea is that, the project can be reproduced by running the following commands:
 
