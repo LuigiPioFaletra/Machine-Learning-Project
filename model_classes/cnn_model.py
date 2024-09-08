@@ -72,17 +72,17 @@ class CNNAudioClassifier(nn.Module):
         # Flatten the tensor for the fully connected layers
         x = x.view(x.size(0), -1)
         
-        # First fully connected layer + batch normalization + dropout + GELU activation
+        # First fully connected layer + dropout + GELU activation
         x = self.fc1(x)
         x = self.dropout(x)
         x = self.gelu(x)
         
-        # Second fully connected layer + batch normalization + dropout + GELU activation
+        # Second fully connected layer + dropout + GELU activation
         x = self.fc2(x)
         x = self.dropout(x)
         x = self.gelu(x)
         
-        # Third fully connected layer + batch normalization + dropout + GELU activation
+        # Third fully connected layer + dropout + GELU activation
         x = self.fc3(x)
         x = self.dropout(x)
         x = self.gelu(x)
