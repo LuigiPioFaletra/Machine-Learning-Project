@@ -49,9 +49,15 @@ if __name__ == '__main__':
                                  config.model.dropout).to(device)
 
     # Load the pre-trained model weights for the CNN, FF and SVM models
+<<<<<<< HEAD
     cnn_model.load_state_dict(torch.load(f'{config.training.checkpoint_dir}/{config.best.cnn}', weights_only=True))
     print('CNN Model loaded.')
     ff_model.load_state_dict(torch.load(f'{config.training.checkpoint_dir}/{config.best.ff}', weights_only=True))
+=======
+    cnn_model.load_state_dict(torch.load(f'{config.training.checkpoint_dir}/{config.best.cnn}'), weights_only=True)
+    print('CNN Model loaded.')
+    ff_model.load_state_dict(torch.load(f'{config.training.checkpoint_dir}/{config.best.ff}'), weights_only=True)
+>>>>>>> 5d00b11ee1b2184de21d29313bd7d70f581e8d1e
     print('FF Model loaded.')
     svm_model = joblib.load(f'{config.training.checkpoint_dir}/{config.best.svm}')
     print('SVM Model loaded.')
