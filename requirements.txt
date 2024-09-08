@@ -3,8 +3,8 @@ joblib
 librosa
 numpy
 pandas
+PyYAML
 scikit-learn
 torch
 tqdm
 transformers
-git+https://github.com/MorenoLaQuatra/yaml_config_override
