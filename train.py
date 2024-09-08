@@ -9,12 +9,13 @@ from data_classes.fma_dataset import FMADataset
 from extract_representations.audio_embeddings import AudioEmbeddings
 from model_classes.cnn_model import CNNAudioClassifier
 from model_classes.ff_model import FFAudioClassifier
+from sklearn.metrics import hinge_loss
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 from utils import compute_metrics, evaluate, extract_and_preprocess_data, save_data
-from yaml_config_override.yaml_config_override import add_arguments
+from yaml_config_override import add_arguments
 
 def train_one_epoch(model, dataloader, loss_fn, optimizer, scheduler, device):
     model.train()                                               # Set the model to training mode                      
@@ -59,19 +60,19 @@ def data_extraction_and_saving(root, metadata_file, sample_rate, max_duration, b
 
     if split == 'training':
         train_ds = FMADataset(root, metadata_file, split, sample_rate, max_duration)                    # Load training dataset
-        train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0)             # Create training dataloader
+        train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)             # Create training dataloader
         train_embeddings, train_labels = extract_and_preprocess_data(model, train_dl, device, split)    # Extract embeddings and labels
         save_data(train_embeddings, train_labels, split)                                                # Save the extracted embeddings and labels
         return train_embeddings, train_labels                                                           # Return training embeddings and labels
     elif split == 'validation':
         val_ds = FMADataset(root, metadata_file, split, sample_rate, max_duration)                      # Load validation dataset
-        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=0)                # Create validation dataloader
+        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=4)                # Create validation dataloader
         val_embeddings, val_labels = extract_and_preprocess_data(model, val_dl, device, split)          # Extract validation embeddings and labels
         save_data(val_embeddings, val_labels, split)                                                    # Save the extracted embeddings and labels
         return val_embeddings, val_labels                                                               # Return validation embeddings and labels
     elif split == 'test':
         test_ds = FMADataset(root, metadata_file, split, sample_rate, max_duration)                     # Load test dataset
-        test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=0)              # Create test dataloader
+        test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=4)              # Create test dataloader
         test_embeddings, test_labels = extract_and_preprocess_data(model, test_dl, device, split)       # Extract test embeddings and labels
         save_data(test_embeddings, test_labels, split)                                                  # Save the extracted embeddings and labels
         return test_embeddings, test_labels                                                             # Return test embeddings and labels
@@ -120,8 +121,8 @@ if __name__ == '__main__':
     val_ds = TensorDataset(val_emb_tensor, val_lab_tensor)
     
     # Create DataLoaders for the datasets
-    train_dl = DataLoader(train_ds, config.training.batch_size, shuffle=True, num_workers=0)
-    val_dl = DataLoader(val_ds, config.training.batch_size, shuffle=False, num_workers=0)
+    train_dl = DataLoader(train_ds, config.training.batch_size, shuffle=True, num_workers=4)
+    val_dl = DataLoader(val_ds, config.training.batch_size, shuffle=False, num_workers=4)
     
     # Instantiate the CNN and FF models
     cnn_model = CNNAudioClassifier(config.model.input_size,
@@ -197,7 +198,7 @@ if __name__ == '__main__':
         torch.save(best_model.state_dict(), f'{config.training.checkpoint_dir}/best_{model_name.lower()}_model.pt')
         print('Model saved.')
 
-    print(f'\n\nStart SVM model grid search and validation')
+    print(f'\n\nStart SVM model grid search and validation\n')
     svm_model = SVC()                           # Instantiate the SVM model
     
     # After training CNN and FF models, use the FF model to extract features on training and validation sets for SVM
@@ -212,10 +213,12 @@ if __name__ == '__main__':
         'gamma': ['scale', 'auto'],
         'kernel': ['linear', 'rbf']
     }
-    grid_search = GridSearchCV(svm_model, param_grid, cv=5, scoring='accuracy')
-    grid_search.fit(train_features, train_lab)
+    grid_search = GridSearchCV(svm_model, param_grid, cv=5, scoring='accuracy', verbose=3)
+    for _ in tqdm(range(1)):
+        grid_search.fit(train_features, train_lab)
     best_svm = grid_search.best_estimator_
-    print(f'Best SVM: {best_svm}')
+    best_parameters = grid_search.best_params_
+    print(f'\nBest SVM: {best_parameters}')
 
     # Save the best SVM model
     joblib.dump(best_svm, f'{config.training.checkpoint_dir}/{config.best.svm}')
@@ -223,5 +226,8 @@ if __name__ == '__main__':
 
     # Evaluate SVM on validation set
     val_predictions = best_svm.predict(val_features)
-    val_accuracy = np.mean(val_predictions == val_lab)
-    print(f'SVM Val Accuracy: {val_accuracy:.4f}')
+    svm_val_metrics = compute_metrics(val_predictions, val_lab)
+    decision_scores = best_svm.decision_function(val_features)
+    hinge_loss_value = hinge_loss(val_lab, decision_scores)
+    print(f'\nSVM Val accuracy: {svm_val_metrics["accuracy"]:.4f}')
+    print(f'SVM Val loss: {hinge_loss_value:.4f}')
