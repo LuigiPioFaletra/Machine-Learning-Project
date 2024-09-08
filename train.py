@@ -60,19 +60,19 @@ def data_extraction_and_saving(root, metadata_file, sample_rate, max_duration, b
 
     if split == 'training':
         train_ds = FMADataset(root, metadata_file, split, sample_rate, max_duration)                    # Load training dataset
-        train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)             # Create training dataloader
+        train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)                            # Create training dataloader
         train_embeddings, train_labels = extract_and_preprocess_data(model, train_dl, device, split)    # Extract embeddings and labels
         save_data(train_embeddings, train_labels, split)                                                # Save the extracted embeddings and labels
         return train_embeddings, train_labels                                                           # Return training embeddings and labels
     elif split == 'validation':
         val_ds = FMADataset(root, metadata_file, split, sample_rate, max_duration)                      # Load validation dataset
-        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=4)                # Create validation dataloader
+        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False)                               # Create validation dataloader
         val_embeddings, val_labels = extract_and_preprocess_data(model, val_dl, device, split)          # Extract validation embeddings and labels
         save_data(val_embeddings, val_labels, split)                                                    # Save the extracted embeddings and labels
         return val_embeddings, val_labels                                                               # Return validation embeddings and labels
     elif split == 'test':
         test_ds = FMADataset(root, metadata_file, split, sample_rate, max_duration)                     # Load test dataset
-        test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=4)              # Create test dataloader
+        test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False)                             # Create test dataloader
         test_embeddings, test_labels = extract_and_preprocess_data(model, test_dl, device, split)       # Extract test embeddings and labels
         save_data(test_embeddings, test_labels, split)                                                  # Save the extracted embeddings and labels
         return test_embeddings, test_labels                                                             # Return test embeddings and labels
@@ -121,8 +121,8 @@ if __name__ == '__main__':
     val_ds = TensorDataset(val_emb_tensor, val_lab_tensor)
     
     # Create DataLoaders for the datasets
-    train_dl = DataLoader(train_ds, config.training.batch_size, shuffle=True, num_workers=4)
-    val_dl = DataLoader(val_ds, config.training.batch_size, shuffle=False, num_workers=4)
+    train_dl = DataLoader(train_ds, config.training.batch_size, shuffle=True)
+    val_dl = DataLoader(val_ds, config.training.batch_size, shuffle=False)
     
     # Instantiate the CNN and FF models
     cnn_model = CNNAudioClassifier(config.model.input_size,
