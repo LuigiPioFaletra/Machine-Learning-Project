@@ -7,10 +7,11 @@ import torch.nn as nn
 from addict import Dict
 from model_classes.cnn_model import CNNAudioClassifier
 from model_classes.ff_model import FFAudioClassifier
+from sklearn.metrics import hinge_loss
 from torch.utils.data import DataLoader, TensorDataset
 from train import data_extraction_and_saving
-from utils import evaluate
-from yaml_config_override.yaml_config_override import add_arguments
+from utils import compute_metrics, evaluate
+from yaml_config_override import add_arguments
 
 if __name__ == '__main__':
     config = Dict(add_arguments())      # Load configuration from a YAML file or command-line arguments
@@ -36,7 +37,7 @@ if __name__ == '__main__':
 
     # Create a TensorDataset for the test data and a DataLoader for batching
     test_ds = TensorDataset(test_emb_tensor, test_lab_tensor)
-    test_dl = DataLoader(test_ds, config.training.batch_size, shuffle=True, num_workers=0)
+    test_dl = DataLoader(test_ds, config.training.batch_size, shuffle=True, num_workers=4)
     
     # Instantiate the CNN and FF models
     cnn_model = CNNAudioClassifier(config.model.input_size,
@@ -73,5 +74,9 @@ if __name__ == '__main__':
 
     # Evaluate SVM on test set
     test_predictions = svm_model.predict(test_features)
-    test_accuracy = np.mean(test_predictions == test_lab)
-    print(f'SVM Model Test Accuracy: {test_accuracy:.4f}')
+    svm_test_metrics = compute_metrics(test_predictions, test_lab)
+    decision_scores = svm_model.decision_function(test_features)
+    hinge_loss_value = hinge_loss(test_lab, decision_scores)
+    for key, value in svm_test_metrics.items():
+        print(f'\nSVM Model Test {key}: {value:.4f}', end='')
+    print(f'\nSVM Model Test loss: {hinge_loss_value:.4f}')
