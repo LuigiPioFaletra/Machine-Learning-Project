@@ -52,11 +52,11 @@ The dataset is managed by the `fma_dataset.py` class, while the models are defin
 The main idea is that, the project can be reproduced by running the following commands:
 
 ```bash
-git clone [repository-url]
-cd [repository]
+git clone https://github.com/LuigiPioFaletra/Machine-Learning-Project
+cd Machine-Learning-Project
 bash prepare.sh
-python train.py --config "config/base_config.yaml"
-python test.py --config "config/base_config.yaml"
+python train.py --config config/base_config.yaml
+python test.py --config config/base_config.yaml
 ```
 
 The `prepare.sh` script is used to install the requirements for the project and, optionally, to set up the environment (e.g., download the dataset, download the metadata, etc.). The project should be self-contained and reproducible by running the above commands.
@@ -75,11 +75,11 @@ You may want to modify the requirements file to remove unnecessary dependencies 
 - `librosa` for audio analysis and processing.
 - `numpy` for scientific computing.
 - `pandas` for data manipulation.
+- `PyYAML` for working with .yaml files.
 - `scikit-learn` for machine learning algorithms.
 - `torch` for deep learning.
 - `tqdm` for progress bars.
 - `transformers` for pretrained models.
-- `yaml_config_override` for configuration management.
 
 ---
 
@@ -103,6 +103,9 @@ main_repository/
 │   ├── cnn_model.py
 │   ├── ff_model.py
 │
+├── yaml_config_override/
+│   ├── __init__.py
+│
 ├── .gitignore
 ├── LICENSE
 ├── prepare.sh
@@ -117,6 +120,7 @@ main_repository/
 - `data_classes/` contains the class for managing the dataset.
 - `extract_representations/` contains the class for audio features extraction.
 - `model_classes/` contains the classes for the models design.
+- `yaml_config_override/` contains the functions that automatically adds command-line arguments to YAML configuration files.
 - `.gitignore` specifies which files and folders should be ignored from the Git version control system.
 - `LICENSE` contains the project’s license information.
 - `prepare.sh` is a script for setting up the environment - at the moment it only installs the requirements.
