@@ -49,14 +49,22 @@ The **musical genres** to be classified are:
 
 The dataset is managed by the `fma_dataset.py` class, while the models are defined in the `cnn_model.py` and `ff_model.py` classes. The **SVM model** is implemented by calling the `SVC` class from the scikit-learn library.
 
-The main idea is that, the project can be reproduced by running the following commands:
+The main idea is that, the project can be reproduced by running the following commands in separate cells on [Google Colab](https://colab.research.google.com):
 
 ```bash
-git clone https://github.com/LuigiPioFaletra/Machine-Learning-Project
-cd Machine-Learning-Project
-bash prepare.sh
-python train.py --config config/base_config.yaml
-python test.py --config config/base_config.yaml
+!git clone https://github.com/LuigiPioFaletra/Machine-Learning-Project
+```
+```bash
+%cd Machine-Learning-Project
+```
+```bash
+%%bash prepare.sh
+```
+```bash
+!python3 train.py --config config/base_config.yaml
+```
+```bash
+!python3 test.py --config config/base_config.yaml
 ```
 
 The `prepare.sh` script is used to install the requirements for the project and, optionally, to set up the environment (e.g., download the dataset, download the metadata, etc.). The project should be self-contained and reproducible by running the above commands.
