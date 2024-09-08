@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
     # Create a TensorDataset for the test data and a DataLoader for batching
     test_ds = TensorDataset(test_emb_tensor, test_lab_tensor)
-    test_dl = DataLoader(test_ds, config.training.batch_size, shuffle=True, num_workers=4)
+    test_dl = DataLoader(test_ds, config.training.batch_size, shuffle=False)
     
     # Instantiate the CNN and FF models
     cnn_model = CNNAudioClassifier(config.model.input_size,
