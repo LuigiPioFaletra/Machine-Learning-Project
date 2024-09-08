@@ -1,4 +1,5 @@
 checkpoints/*
+fma_small_data/*
 npy_files/*
 fma_small.zip
 fma_metadata.zip
