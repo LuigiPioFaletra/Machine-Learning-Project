@@ -222,12 +222,11 @@ if __name__ == '__main__':
 
     # Save the best SVM model
     joblib.dump(best_svm, f'{config.training.checkpoint_dir}/{config.best.svm}')
-    print('SVM Model saved.')
+    print('Model saved.')
 
     # Evaluate SVM on validation set
     val_predictions = best_svm.predict(val_features)
     svm_val_metrics = compute_metrics(val_predictions, val_lab)
     decision_scores = best_svm.decision_function(val_features)
     hinge_loss_value = hinge_loss(val_lab, decision_scores)
-    print(f'\nSVM Val accuracy: {svm_val_metrics["accuracy"]:.4f}')
-    print(f'SVM Val loss: {hinge_loss_value:.4f}')
+    print(f'\nVal loss: {hinge_loss_value:.4f} - Val accuracy: {svm_val_metrics["accuracy"]:.4f}')
