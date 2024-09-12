@@ -1,42 +1,42 @@
-data:
-  dataset_dir: fma_small_data/fma_small
-  metadata_file: fma_small_data/tracks.csv
-
-training:
-  epochs: 100
-  batch_size: 32
-  learning_rate: 0.001
-  optimizer: adam
-  warmup_ratio: 0.1
-  weight_decay: 0.001
-  sample_rate: 16000
-  max_duration: 30
-  checkpoint_dir: checkpoints/
-  npy_dir: npy_files/
-  device: cuda
-  evaluation_metric: accuracy
-  best_metric_lower_is_better: false
-
-model:
-  input_size: 768
-  hidden_layers: [384, 256, 192, 128, 96, 64, 48, 32, 24, 16]
-  num_classes: 8
-  dropout: 0.3
-
-filename:
-  train_embeddings: training_embeddings.npy
-  train_labels: training_labels.npy
-  val_embeddings: validation_embeddings.npy
-  val_labels: validation_labels.npy
-  test_embeddings: test_embeddings.npy
-  test_labels: test_labels.npy
-
-split:
-  train: training
-  val: validation
-  test: test
-
 best:
   cnn: best_cnn_model.pt
   ff: best_ff_model.pt
   svm: best_svm_model.pkl
+
+data:
+  dataset_dir: fma_small_data/fma_small
+  metadata_file: fma_small_data/tracks.csv
+
+filename:
+  test_embeddings: test_embeddings.npy
+  test_labels: test_labels.npy
+  train_embeddings: training_embeddings.npy
+  train_labels: training_labels.npy
+  val_embeddings: validation_embeddings.npy
+  val_labels: validation_labels.npy
+
+model:
+  dropout: 0.3
+  hidden_layers: [384, 256, 192, 128, 96, 64, 48, 32, 24, 16]
+  input_size: 768
+  num_classes: 8
+
+split:
+  test: test
+  train: training
+  val: validation
+
+training:
+  batch_size: 32
+  best_metric_lower_is_better: false
+  checkpoint_dir: checkpoints/
+  device: cuda
+  epochs: 100
+  evaluation_metric: accuracy
+  learning_rate: 0.001
+  max_duration: 30
+  npy_dir: npy_files/
+  optimizer: adam
+  sample_rate: 16000
+  warmup_ratio: 0.1
+  weight_decay: 0.001
