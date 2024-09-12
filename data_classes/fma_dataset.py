@@ -32,9 +32,9 @@ class FMADataset(Dataset):
         genre_idx = get_genre_idx(self.metadata, self.genre_to_idx, idx)
 
         # Load the audio file and handle any errors that occur during loading
-        audio = load_audio(audio_path, self.sample_rate)
-        if audio is None:                               # If there was an error loading the audio, try the next sample
+        audio = load_audio(audio_path, self.sample_rate)    # During loading, converts the audio to mono and resamples to the sample_rate value
+        if audio is None:                                   # If there was an error loading the audio, try the next sample
             return self.__getitem__((idx + 1) % len(self.metadata))
 
-        audio = process_audio(audio, self.max_length)   # Process the audio: convert to mono, truncate, or pad to the desired length
-        return audio, genre_idx                         # Return the processed audio and its corresponding genre index
+        audio = process_audio(audio, self.max_length)       # Process the audio: truncate or pad to the desired length
+        return audio, genre_idx                             # Return the processed audio and its corresponding genre index
