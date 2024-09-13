@@ -10,7 +10,7 @@ from extract_representations.audio_embeddings import AudioEmbeddings
 from model_classes.cnn_model import CNNAudioClassifier
 from model_classes.ff_model import FFAudioClassifier
 from sklearn.metrics import hinge_loss
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.svm import SVC
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
@@ -55,27 +55,27 @@ def manage_best_model_and_metrics(model, evaluation_metric, val_metrics, best_va
         
     return best_val_metric, best_model
 
-def data_extraction_and_saving(root, metadata_file, sample_rate, max_duration, batch_size, device, split):
-    model = AudioEmbeddings()           # Instantiate the embedding extraction model
+def manage_early_stopping(val_metric, best_val_metric, early_stopping_counter, patience):
+    # Check if the validation metric has improved
+    if val_metric <= best_val_metric:
+        early_stopping_counter = 0      # Reset counter if improvement is seen
+    else:
+        early_stopping_counter += 1     # Increment counter if no improvement
 
-    if split == 'training':
-        train_ds = FMADataset(root, metadata_file, split, sample_rate, max_duration)                    # Load training dataset
-        train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)                            # Create training dataloader
-        train_embeddings, train_labels = extract_and_preprocess_data(model, train_dl, device, split)    # Extract embeddings and labels
-        save_data(train_embeddings, train_labels, split)                                                # Save the extracted embeddings and labels
-        return train_embeddings, train_labels                                                           # Return training embeddings and labels
-    elif split == 'validation':
-        val_ds = FMADataset(root, metadata_file, split, sample_rate, max_duration)                      # Load validation dataset
-        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False)                               # Create validation dataloader
-        val_embeddings, val_labels = extract_and_preprocess_data(model, val_dl, device, split)          # Extract validation embeddings and labels
-        save_data(val_embeddings, val_labels, split)                                                    # Save the extracted embeddings and labels
-        return val_embeddings, val_labels                                                               # Return validation embeddings and labels
-    elif split == 'test':
-        test_ds = FMADataset(root, metadata_file, split, sample_rate, max_duration)                     # Load test dataset
-        test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False)                             # Create test dataloader
-        test_embeddings, test_labels = extract_and_preprocess_data(model, test_dl, device, split)       # Extract test embeddings and labels
-        save_data(test_embeddings, test_labels, split)                                                  # Save the extracted embeddings and labels
-        return test_embeddings, test_labels                                                             # Return test embeddings and labels
+    # If the counter exceeds patience, trigger early stopping
+    if early_stopping_counter >= patience:
+        print("Early stopping triggered.")
+        return True
+
+    return False
+
+def data_extraction_and_saving(root, metadata_file, sample_rate, max_duration, batch_size, device, split):
+    model = AudioEmbeddings()                                                                 # Instantiate the embedding extraction model
+    dataset = FMADataset(root, metadata_file, split, sample_rate, max_duration)               # Load the dataset
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=(split == 'training'))    # Create the dataloader
+    embeddings, labels = extract_and_preprocess_data(model, dataloader, device, split)        # Extract embeddings and labels
+    save_data(embeddings, labels, split)                                                      # Save the extracted embeddings and labels
+    return embeddings, labels                                                                 # Return embeddings and labels
 
 
 if __name__ == '__main__':
@@ -160,6 +160,7 @@ if __name__ == '__main__':
 
     for model_name, model, optimizer, scheduler, best_model in models:
         print(f'\n\nStart {model_name} model training and validation')
+
         # Initialize best validation metric and model
         best_val_metric = float('inf') if config.training.best_metric_lower_is_better else float('-inf')
         best_model = None
@@ -183,15 +184,9 @@ if __name__ == '__main__':
                 config.training.best_metric_lower_is_better
             )
 
-            # Early Stopping logic
-            if best_model is None:              # No improvement found
-                early_stopping_counter += 1
-            else:
-                early_stopping_counter = 0      # Reset counter if new best model found
-            
-            if early_stopping_counter >= patience:
-                print("Early stopping triggered.")
-                break
+            # Check early stopping conditions
+            if manage_early_stopping(val_metrics['loss'], best_val_metric, early_stopping_counter, patience):
+                break                   # Stop training if early stopping is triggered
 
         # Save the best model
         os.makedirs(config.training.checkpoint_dir, exist_ok=True)
@@ -199,7 +194,7 @@ if __name__ == '__main__':
         print('Model saved.')
 
     print(f'\n\nStart SVM model grid search and validation\n')
-    svm_model = SVC()                           # Instantiate the SVM model
+    svm_model = SVC()                   # Instantiate the SVM model
     
     # After training CNN and FF models, use the FF model to extract features on training and validation sets for SVM
     ff_model.eval()
@@ -207,17 +202,19 @@ if __name__ == '__main__':
         train_features = ff_model(torch.tensor(train_emb, dtype=torch.float32).to(device)).cpu().numpy()
         val_features = ff_model(torch.tensor(val_emb, dtype=torch.float32).to(device)).cpu().numpy()
     
-    # Define SVM and perform Grid Search for hyperparameter tuning
-    param_grid = {
-        'C': [0.1, 1, 10],
-        'gamma': ['scale', 'auto'],
-        'kernel': ['linear', 'rbf']
+    # Parameter distribution for SVM randomized search
+    param_dist = {
+        'C': [0.1, 1, 10, 100],         # Regularization parameter
+        'gamma': ['scale', 'auto'],     # Kernel coefficient for 'rbf'
+        'kernel': ['linear', 'rbf']     # Kernel type
     }
-    grid_search = GridSearchCV(svm_model, param_grid, cv=5, scoring='accuracy', verbose=3)
+
+    # Randomized search across the specified hyperparameter distributions
+    random_search = RandomizedSearchCV(svm_model, param_dist, n_iter=10, cv=5, scoring='accuracy', verbose=3)
     for _ in tqdm(range(1)):
-        grid_search.fit(train_features, train_lab)
-    best_svm = grid_search.best_estimator_
-    best_parameters = grid_search.best_params_
+        random_search.fit(train_features, train_lab)
+    best_svm = random_search.best_estimator_
+    best_parameters = random_search.best_params_
     print(f'\nBest SVM: {best_parameters}')
 
     # Save the best SVM model
