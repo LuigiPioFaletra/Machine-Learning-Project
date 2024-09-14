@@ -18,8 +18,8 @@ This is a machine learning project realized for the Machine Learning course at U
   - [Introduction](#introduction)
   - [Requirements](#requirements)
   - [Code structure](#code-structure)
-  - [License](#license)
   - [Results](#results)
+  - [License](#license)
 
 ---
 
@@ -156,22 +156,28 @@ main_repository/
 
 ---
 
-### License
-
-This project is licensed under the terms of the MIT license. You can find the full license in the `LICENSE` file.
-
----
-
 ### Results
 
 This section shows the **training and validation results** of the three implemented models:
 
+**CNN**
 ![CNN_training_and_validation](./results/cnn_training_and_validation.png)
+**FFNN**
 ![FFNN_training_and_validation](./results/ffnn_training_and_validation.png)
+**SVM**
 ![SVM_validation](./results/svm_validation.png)
 
 And here are the **test results** of the same models:
 
+**CNN**
 ![CNN_test](./results/cnn_test.png)
+**FFNN**
 ![FFNN_test](./results/ffnn_test.png)
+**SVM**
 ![SVM_test](./results/svm_test.png)
+
+---
+
+### License
+
+This project is licensed under the terms of the MIT license. You can find the full license in the `LICENSE` file.
