@@ -8,7 +8,7 @@ from addict import Dict
 from data_classes.fma_dataset import FMADataset
 from extract_representations.audio_embeddings import AudioEmbeddings
 from model_classes.cnn_model import CNNAudioClassifier
-from model_classes.ff_model import FFAudioClassifier
+from model_classes.ffnn_model import FFNNAudioClassifier
 from sklearn.metrics import hinge_loss
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.svm import SVC
@@ -133,22 +133,22 @@ if __name__ == '__main__':
     train_dl = DataLoader(train_ds, config.training.batch_size, shuffle=True)
     val_dl = DataLoader(val_ds, config.training.batch_size, shuffle=False)
     
-    # Instantiate the CNN and FF models
+    # Instantiate the CNN and FFNN models
     cnn_model = CNNAudioClassifier(config.model.input_size,
                                    config.model.num_classes,
                                    config.model.dropout).to(device)
-    ff_model = FFAudioClassifier(config.model.input_size,
-                                 config.model.hidden_layers,
-                                 config.model.num_classes,
-                                 config.model.dropout).to(device)
+    ffnn_model = FFNNAudioClassifier(config.model.input_size,
+                                     config.model.hidden_layers,
+                                     config.model.num_classes,
+                                     config.model.dropout).to(device)
     
     cnn_model.to(device)
-    ff_model.to(device)
+    ffnn_model.to(device)
     
     # Define loss function and optimizer
     criterion = nn.CrossEntropyLoss()
     cnn_optimizer = torch.optim.Adam(cnn_model.parameters(), lr=config.training.learning_rate, weight_decay=config.training.weight_decay)
-    ff_optimizer = torch.optim.Adam(ff_model.parameters(), lr=config.training.learning_rate, weight_decay=config.training.weight_decay)
+    ffnn_optimizer = torch.optim.Adam(ffnn_model.parameters(), lr=config.training.learning_rate, weight_decay=config.training.weight_decay)
 
     # Learning rate scheduler for warmup and decay
     total_steps = len(train_dl) * config.training.epochs
@@ -157,11 +157,11 @@ if __name__ == '__main__':
     # Warmup + linear decay schedule
     scheduler_lambda = lambda step: (step / warmup_steps) if step < warmup_steps else max(0.0, (total_steps - step) / (total_steps - warmup_steps))
     cnn_scheduler = torch.optim.lr_scheduler.LambdaLR(cnn_optimizer, lr_lambda=scheduler_lambda)
-    ff_scheduler = torch.optim.lr_scheduler.LambdaLR(ff_optimizer, lr_lambda=scheduler_lambda)
+    ffnn_scheduler = torch.optim.lr_scheduler.LambdaLR(ffnn_optimizer, lr_lambda=scheduler_lambda)
 
     # List of models to train
     models = [('CNN', cnn_model, cnn_optimizer, cnn_scheduler, config.best.cnn),
-              ('FF', ff_model, ff_optimizer, ff_scheduler, config.best.ff)]
+              ('FFNN', ffnn_model, ffnn_optimizer, ffnn_scheduler, config.best.ff)]
 
     # Inizialization of early stopping parameters
     patience = 3
@@ -205,11 +205,11 @@ if __name__ == '__main__':
     print(f'\n\nStart SVM model grid search and validation\n')
     svm_model = SVC()                   # Instantiate the SVM model
     
-    # After training CNN and FF models, use the FF model to extract features on training and validation sets for SVM
-    ff_model.eval()
+    # After training CNN and FFNN models, use the FFNN model to extract features on training and validation sets for SVM
+    ffnn_model.eval()
     with torch.no_grad():
-        train_features = ff_model(torch.tensor(train_emb, dtype=torch.float32).to(device)).cpu().numpy()
-        val_features = ff_model(torch.tensor(val_emb, dtype=torch.float32).to(device)).cpu().numpy()
+        train_features = ffnn_model(torch.tensor(train_emb, dtype=torch.float32).to(device)).cpu().numpy()
+        val_features = ffnn_model(torch.tensor(val_emb, dtype=torch.float32).to(device)).cpu().numpy()
     
     # Parameter distribution for SVM randomized search
     param_dist = {
