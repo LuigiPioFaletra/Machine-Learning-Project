@@ -11,7 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils import get_audio_path, get_genre_idx, get_track_id, load_audio, process_audio
 
 class FMADataset(Dataset):
-    def __init__(self, root, metadata_file, data_split, sample_rate=16000, max_duration=30):
+    def __init__(self, root, metadata_file, data_split, sample_rate, max_duration):
         self.root = root                                                            # Path to the root directory of audio files
         df = pd.read_csv(metadata_file, low_memory=False)                           # Load metadata from the CSV file
         self.metadata = df[(df['set'] == data_split) & (df['set.1'] == 'small')]    # Filter metadata based on the data split and subset ('small')
