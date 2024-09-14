@@ -69,46 +69,55 @@ def manage_early_stopping(val_metric, best_val_metric, early_stopping_counter, p
 
     return False
 
-def data_extraction_and_saving(root, metadata_file, sample_rate, max_duration, batch_size, device, split):
-    model = AudioEmbeddings()                                                                 # Instantiate the embedding extraction model
-    dataset = FMADataset(root, metadata_file, split, sample_rate, max_duration)               # Load the dataset
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=(split == 'training'))    # Create the dataloader
-    embeddings, labels = extract_and_preprocess_data(model, dataloader, device, split)        # Extract embeddings and labels
-    save_data(embeddings, labels, split)                                                      # Save the extracted embeddings and labels
-    return embeddings, labels                                                                 # Return embeddings and labels
+def load_or_extract_data(root, metadata_file, sample_rate, max_duration, batch_size, device, directory, split):
+    # Define file paths for embeddings and labels
+    embedding_file = f'{directory}/{split}_embeddings.npy'
+    label_file = f'{directory}/{split}_labels.npy'
+    
+    # Check if the embeddings and labels already exist as .npy files
+    if os.path.exists(embedding_file) and os.path.exists(label_file):
+        # Load pre-saved embeddings and labels
+        embeddings = np.load(embedding_file)
+        labels = np.load(label_file)
+    else:
+        model = AudioEmbeddings()       # Initialize the audio embedding extraction model
+        
+        # Create the dataset and dataloader for the specified split
+        dataset = FMADataset(root, metadata_file, split, sample_rate, max_duration)
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=(split == 'training'))
+        
+        # Extract embeddings and labels from the audio data
+        embeddings, labels = extract_and_preprocess_data(model, dataloader, device, split)
+        
+        # Save the extracted embeddings and labels as .npy files for future use
+        save_data(embeddings, labels, split, directory)
+    
+    return embeddings, labels           # Return the embeddings and labels
 
 
 if __name__ == '__main__':
     config = Dict(add_arguments())      # Load configuration from YAML file
     device = torch.device('cuda' if torch.cuda.is_available() and config.training.device == 'cuda' else 'cpu')
-    
-    # Check if training embeddings and labels already exist, otherwise extract and save them
-    if not (os.path.exists(f'{config.training.npy_dir}/{config.filename.train_embeddings}') and os.path.exists(f'{config.training.npy_dir}/{config.filename.train_labels}')):
-        train_emb, train_lab = data_extraction_and_saving(config.data.dataset_dir,
-                                                          config.data.metadata_file,
-                                                          config.training.sample_rate,
-                                                          config.training.max_duration,
-                                                          config.training.batch_size,
-                                                          config.training.device,
-                                                          config.split.train)
-    else:
-        # Load pre-saved train embeddings and labels from files
-        train_emb = np.load(f'{config.training.npy_dir}/{config.filename.train_embeddings}')
-        train_lab = np.load(f'{config.training.npy_dir}/{config.filename.train_labels}')
 
-    # Check if validation embeddings and labels already exist, otherwise extract and save them
-    if not (os.path.exists(f'{config.training.npy_dir}/{config.filename.val_embeddings}') and os.path.exists(f'{config.training.npy_dir}/{config.filename.val_labels}')):
-        val_emb, val_lab = data_extraction_and_saving(config.data.dataset_dir,
-                                                      config.data.metadata_file,
-                                                      config.training.sample_rate,
-                                                      config.training.max_duration,
-                                                      config.training.batch_size,
-                                                      config.training.device,
-                                                      config.split.val)
-    else:
-        # Load pre-saved validation embeddings and labels from files
-        val_emb = np.load(f'{config.training.npy_dir}/{config.filename.val_embeddings}')
-        val_lab = np.load(f'{config.training.npy_dir}/{config.filename.val_labels}')
+    # Check if training embeddings and labels already exist and upload them, otherwise extract and save them
+    train_emb, train_lab = load_or_extract_data(config.data.dataset_dir,
+                                                config.data.metadata_file,
+                                                config.training.sample_rate,
+                                                config.training.max_duration,
+                                                config.training.batch_size,
+                                                config.training.device,
+                                                config.training.npy_dir,
+                                                config.split.train)
+
+    # Check if validation embeddings and labels already exist and upload them, otherwise extract and save them
+    val_emb, val_lab = load_or_extract_data(config.data.dataset_dir,
+                                            config.data.metadata_file,
+                                            config.training.sample_rate,
+                                            config.training.max_duration,
+                                            config.training.batch_size,
+                                            config.training.device,
+                                            config.training.npy_dir,
+                                            config.split.val)
     
     # Convert embeddings and labels to tensors
     train_emb_tensor = torch.tensor(train_emb, dtype=torch.float32)
