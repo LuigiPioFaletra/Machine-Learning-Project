@@ -162,8 +162,10 @@ This section shows the **training and validation results** of the three implemen
 
 **CNN**
 ![CNN_training_and_validation](./results/cnn_training_and_validation.png)
+
 **FFNN**
 ![FFNN_training_and_validation](./results/ffnn_training_and_validation.png)
+
 **SVM**
 ![SVM_validation](./results/svm_validation.png)
 
@@ -171,8 +173,10 @@ And here are the **test results** of the same models:
 
 **CNN**
 ![CNN_test](./results/cnn_test.png)
+
 **FFNN**
 ![FFNN_test](./results/ffnn_test.png)
+
 **SVM**
 ![SVM_test](./results/svm_test.png)
 
