@@ -9,27 +9,23 @@ from model_classes.cnn_model import CNNAudioClassifier
 from model_classes.ff_model import FFAudioClassifier
 from sklearn.metrics import hinge_loss
 from torch.utils.data import DataLoader, TensorDataset
-from train import data_extraction_and_saving
+from train import load_or_extract_data
 from utils import compute_metrics, evaluate
 from yaml_config_override import add_arguments
 
 if __name__ == '__main__':
     config = Dict(add_arguments())      # Load configuration from a YAML file or command-line arguments
     device = torch.device('cuda' if torch.cuda.is_available() and config.training.device == 'cuda' else 'cpu')
-    
-    # Check if test embeddings and labels already exist, otherwise extract and save them
-    if not (os.path.exists(f'{config.training.npy_dir}/{config.filename.test_embeddings}') and os.path.exists(f'{config.training.npy_dir}/{config.filename.test_labels}')):
-        test_emb, test_lab = data_extraction_and_saving(config.data.dataset_dir,
-                                                        config.data.metadata_file,
-                                                        config.training.sample_rate,
-                                                        config.training.max_duration,
-                                                        config.training.batch_size,
-                                                        config.training.device,
-                                                        config.split.test)
-    # Load pre-saved test embeddings and labels from files
-    else:
-        test_emb = np.load(f'{config.training.npy_dir}/{config.filename.test_embeddings}')
-        test_lab = np.load(f'{config.training.npy_dir}/{config.filename.test_labels}')
+
+    # Check if test embeddings and labels already exist and upload them, otherwise extract and save them
+    test_emb, test_lab = load_or_extract_data(config.data.dataset_dir,
+                                              config.data.metadata_file,
+                                              config.training.sample_rate,
+                                              config.training.max_duration,
+                                              config.training.batch_size,
+                                              config.training.device,
+                                              config.training.npy_dir,
+                                              config.split.test)
 
     # Convert the test embeddings and labels to tensors
     test_emb_tensor = torch.tensor(test_emb, dtype=torch.float32)
