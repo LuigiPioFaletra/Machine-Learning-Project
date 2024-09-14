@@ -19,12 +19,13 @@ This is a machine learning project realized for the Machine Learning course at U
   - [Requirements](#requirements)
   - [Code structure](#code-structure)
   - [License](#license)
+  - [Results](#results)
 
 ---
 
 ### Introduction
 
-The project focuses on classifying musical genres using the smallest [FMA](https://github.com/mdeff/fma) dataset, known as `fma_small`. It employs various machine learning models, including a Support Vector Machine (SVM), based on a Feedforward Neural Network (FFNN), and a Convolutional Neural Network (CNN).
+The project focuses on classifying musical genres using the smallest [FMA](https://github.com/mdeff/fma) dataset, known as `fma_small`. It employs various machine learning models, including a Support Vector Machine (**SVM**), based on a Feedforward Neural Network (**FFNN**), and a Convolutional Neural Network (**CNN**).
 
 The project is divided into two main scripts:
 - `train.py` for training and validate the model.
@@ -47,7 +48,7 @@ The **musical genres** to be classified are:
 - Pop.
 - Rock.
 
-The dataset is managed by the `fma_dataset.py` class, while the models are defined in the `cnn_model.py` and `ff_model.py` classes. The **SVM model** is implemented by calling the `SVC` class from the scikit-learn library.
+The dataset is managed by the `fma_dataset.py` class, while the models are defined in the `cnn_model.py` and `ffnn_model.py` classes. The SVM model is implemented by calling the `SVC` class from the scikit-learn library.
 
 The main idea is that, the project can be reproduced by running the following commands in separate cells on [Google Colab](https://colab.research.google.com):
 
@@ -83,11 +84,12 @@ You may want to modify the requirements file to remove unnecessary dependencies 
 - `librosa` for audio analysis and processing.
 - `numpy` for scientific computing.
 - `pandas` for data manipulation.
-- `PyYAML` for working with .yaml files.
+- `PyYAML` for reading and writing YAML files.
 - `scikit-learn` for machine learning algorithms.
 - `torch` for deep learning.
 - `tqdm` for progress bars.
 - `transformers` for pretrained models.
+- `yaml_config_override` for overriding YAML configurations.
 
 ---
 
@@ -109,10 +111,23 @@ main_repository/
 │
 ├── model_classes/
 │   ├── cnn_model.py
-│   ├── ff_model.py
+│   ├── ffnn_model.py
 │
-├── yaml_config_override/
-│   ├── __init__.py
+├── npy_files/
+│   ├── test_embeddings.npy
+│   ├── test_labels.npy
+│   ├── training_embeddings.npy
+│   ├── training_labels.npy
+│   ├── validation_embeddings.npy
+│   ├── validation_labels.npy
+│
+├── results/
+│   ├── cnn_test.png
+│   ├── cnn_training_and_validation.png
+│   ├── ffnn_test.png
+│   ├── ffnn_training_and_validation.png
+│   ├── svm_test.png
+│   ├── svm_validation.png
 │
 ├── .gitignore
 ├── LICENSE
@@ -128,7 +143,8 @@ main_repository/
 - `data_classes/` contains the class for managing the dataset.
 - `extract_representations/` contains the class for audio features extraction.
 - `model_classes/` contains the classes for the models design.
-- `yaml_config_override/` contains the functions that automatically adds command-line arguments to YAML configuration files.
+- `npy_files/` contains binary files with embeddings and labels extracted from the training, validation and test datasets.
+- `results/` contains the results obtained in the training, validation and testing phase for the CNN and FFNN models and those in the validation and testing phase for the SVM model.
 - `.gitignore` specifies which files and folders should be ignored from the Git version control system.
 - `LICENSE` contains the project’s license information.
 - `prepare.sh` is a script for setting up the environment - at the moment it only installs the requirements.
@@ -143,3 +159,19 @@ main_repository/
 ### License
 
 This project is licensed under the terms of the MIT license. You can find the full license in the `LICENSE` file.
+
+---
+
+### Results
+
+This section shows the **training and validation results** of the three implemented models:
+
+![CNN_training_and_validation](./results/cnn_training_and_validation.png)
+![FFNN_training_and_validation](./results/ffnn_training_and_validation.png)
+![SVM_validation](./results/svm_validation.png)
+
+And here are the **test results** of the same models:
+
+![CNN_test](./results/cnn_test.png)
+![FFNN_test](./results/ffnn_test.png)
+![SVM_test](./results/svm_test.png)
