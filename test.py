@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from addict import Dict
 from model_classes.cnn_model import CNNAudioClassifier
-from model_classes.ff_model import FFAudioClassifier
+from model_classes.ffnn_model import FFNNAudioClassifier
 from sklearn.metrics import hinge_loss
 from torch.utils.data import DataLoader, TensorDataset
 from train import load_or_extract_data
@@ -35,25 +35,25 @@ if __name__ == '__main__':
     test_ds = TensorDataset(test_emb_tensor, test_lab_tensor)
     test_dl = DataLoader(test_ds, config.training.batch_size, shuffle=False)
     
-    # Instantiate the CNN and FF models
+    # Instantiate the CNN and FFNN models
     cnn_model = CNNAudioClassifier(config.model.input_size,
                                    config.model.num_classes,
                                    config.model.dropout).to(device)
-    ff_model = FFAudioClassifier(config.model.input_size,
-                                 config.model.hidden_layers,
-                                 config.model.num_classes,
-                                 config.model.dropout).to(device)
+    ffnn_model = FFNNAudioClassifier(config.model.input_size,
+                                     config.model.hidden_layers,
+                                     config.model.num_classes,
+                                     config.model.dropout).to(device)
 
-    # Load the pre-trained model weights for the CNN, FF and SVM models
+    # Load the pre-trained model weights for the CNN, FFNN and SVM models
     cnn_model.load_state_dict(torch.load(f'{config.training.checkpoint_dir}/{config.best.cnn}', weights_only=True))
     print('CNN Model loaded.')
-    ff_model.load_state_dict(torch.load(f'{config.training.checkpoint_dir}/{config.best.ff}', weights_only=True))
-    print('FF Model loaded.')
+    ffnn_model.load_state_dict(torch.load(f'{config.training.checkpoint_dir}/{config.best.ff}', weights_only=True))
+    print('FFNN Model loaded.')
     svm_model = joblib.load(f'{config.training.checkpoint_dir}/{config.best.svm}')
     print('SVM Model loaded.')
 
     criterion = nn.CrossEntropyLoss()                                   # Define the loss function for evaluation
-    models = [('CNN', cnn_model), ('FF', ff_model)]                     # List of models to evaluate
+    models = [('CNN', cnn_model), ('FFNN', ffnn_model)]                 # List of models to evaluate
     
     # Evaluate each model on the test dataset
     for model_name, model in models:
@@ -63,10 +63,10 @@ if __name__ == '__main__':
         for key, value in test_metrics.items():
             print(f'{model_name} Model Test {key}: {value:.4f}')
 
-    # After evaluate CNN and FF models, use the FF model to extract features on test set for SVM
-    ff_model.eval()
+    # After evaluate CNN and FFNN models, use the FFNN model to extract features on test set for SVM
+    ffnn_model.eval()
     with torch.no_grad():
-        test_features = ff_model(test_emb_tensor.to(device)).cpu().numpy()
+        test_features = ffnn_model(test_emb_tensor.to(device)).cpu().numpy()
 
     # Evaluate SVM on test set
     test_predictions = svm_model.predict(test_features)
