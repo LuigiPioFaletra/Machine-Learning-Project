@@ -25,7 +25,7 @@ This is a machine learning project realized for the Machine Learning course at U
 
 ### Introduction
 
-The project focuses on classifying musical genres using the smallest [FMA](https://github.com/mdeff/fma) dataset, known as `fma_small`. It employs various machine learning models, including a Support Vector Machine (**SVM**), based on a Feedforward Neural Network (**FFNN**), and a Convolutional Neural Network (**CNN**).
+The project focuses on classifying musical genres using the smallest [FMA](https://github.com/mdeff/fma) dataset, known as `fma_small`. It employs various machine learning models, including a Support Vector Machine (**SVM**), based on a Feedforward Neural Network (**FNN**), and a Convolutional Neural Network (**CNN**).
 
 The project is divided into two main scripts:
 - `train.py` for training and validate the model.
@@ -48,7 +48,7 @@ The **musical genres** to be classified are:
 - Pop.
 - Rock.
 
-The dataset is managed by the `fma_dataset.py` class, while the models are defined in the `cnn_model.py` and `ffnn_model.py` classes. The SVM model is implemented by calling the `SVC` class from the scikit-learn library.
+The dataset is managed by the `fma_dataset.py` class, while the models are defined in the `cnn_model.py` and `fnn_model.py` classes. The SVM model is implemented by calling the `SVC` class from the scikit-learn library.
 
 The main idea is that, the project can be reproduced by running the following commands in separate cells on [Google Colab](https://colab.research.google.com):
 
@@ -111,7 +111,7 @@ main_repository/
 │
 ├── model_classes/
 │   ├── cnn_model.py
-│   ├── ffnn_model.py
+│   ├── fnn_model.py
 │
 ├── npy_files/
 │   ├── test_embeddings.npy
@@ -124,8 +124,8 @@ main_repository/
 ├── results/
 │   ├── cnn_test.png
 │   ├── cnn_training_and_validation.png
-│   ├── ffnn_test.png
-│   ├── ffnn_training_and_validation.png
+│   ├── fnn_test.png
+│   ├── fnn_training_and_validation.png
 │   ├── svm_test.png
 │   ├── svm_validation.png
 │
@@ -144,7 +144,7 @@ main_repository/
 - `extract_representations/` contains the class for audio features extraction.
 - `model_classes/` contains the classes for the models design.
 - `npy_files/` contains binary files with embeddings and labels extracted from the training, validation and test datasets.
-- `results/` contains the results obtained in the training, validation and testing phase for the CNN and FFNN models and those in the validation and testing phase for the SVM model.
+- `results/` contains the results obtained in the training, validation and testing phase for the CNN and FNN models and those in the validation and testing phase for the SVM model.
 - `.gitignore` specifies which files and folders should be ignored from the Git version control system.
 - `LICENSE` contains the project’s license information.
 - `prepare.sh` is a script for setting up the environment - at the moment it only installs the requirements.
@@ -164,9 +164,9 @@ This section shows the **training and validation results** of the three implemen
 
 ![CNN_training_and_validation](./results/cnn_training_and_validation.png)
 
-**FFNN**
+**FNN**
 
-![FFNN_training_and_validation](./results/ffnn_training_and_validation.png)
+![FNN_training_and_validation](./results/fnn_training_and_validation.png)
 
 **SVM**
 
@@ -178,9 +178,9 @@ And here are the **test results** of the same models:
 
 ![CNN_test](./results/cnn_test.png)
 
-**FFNN**
+**FNN**
 
-![FFNN_test](./results/ffnn_test.png)
+![FNN_test](./results/fnn_test.png)
 
 **SVM**
 
