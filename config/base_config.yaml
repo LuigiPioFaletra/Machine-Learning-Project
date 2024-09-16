@@ -1,6 +1,6 @@
 best:
   cnn: best_cnn_model.pt
-  ff: best_ffnn_model.pt
+  ff: best_fnn_model.pt
   svm: best_svm_model.pkl
 
 data:
