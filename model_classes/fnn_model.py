@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 
-class FFNNAudioClassifier(nn.Module):
+class FNNAudioClassifier(nn.Module):
     def __init__(self, input_size, hidden_layers, num_classes, dropout):
-        super(FFNNAudioClassifier, self).__init__()
+        super(FNNAudioClassifier, self).__init__()
         
         # Layer 1: fully connected layers from 768 to 384 features
         self.fc1 = nn.Linear(input_size, hidden_layers[0])
