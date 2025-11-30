@@ -101,17 +101,17 @@ The code is organized as follows:
 main_repository/
 │
 ├── config/
-│   ├── base_config.yaml
+│   └── base_config.yaml
 │
 ├── data_classes/
-│   ├── fma_dataset.py
+│   └── fma_dataset.py
 │
 ├── extract_representations/
-│   ├── audio_embeddings.py
+│   └── audio_embeddings.py
 │
 ├── model_classes/
 │   ├── cnn_model.py
-│   ├── fnn_model.py
+│   └── fnn_model.py
 │
 ├── npy_files/
 │   ├── test_embeddings.npy
@@ -119,7 +119,7 @@ main_repository/
 │   ├── training_embeddings.npy
 │   ├── training_labels.npy
 │   ├── validation_embeddings.npy
-│   ├── validation_labels.npy
+│   └── validation_labels.npy
 │
 ├── results/
 │   ├── cnn_test.png
@@ -127,7 +127,7 @@ main_repository/
 │   ├── fnn_test.png
 │   ├── fnn_training_and_validation.png
 │   ├── svm_test.png
-│   ├── svm_validation.png
+│   └── svm_validation.png
 │
 ├── .gitignore
 ├── LICENSE
