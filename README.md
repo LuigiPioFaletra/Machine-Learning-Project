@@ -7,7 +7,7 @@ This is a machine learning project realized for the Machine Learning course at U
 | **Description** | Machine learning project for musical genres recognition |
 | **Author** | Luigi Pio Faletra |
 | **Course** | [Machine Learning @ UniKore](https://unikore.it) |
-| **License** | [MIT](https://opensource.org/licenses/MIT) |
+| **License** | [PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0) |
 
 ---
 
