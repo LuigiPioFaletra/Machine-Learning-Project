@@ -53,10 +53,10 @@ The dataset is managed by the `fma_dataset.py` class, while the models are defin
 The main idea is that, the project can be reproduced by running the following commands in separate cells on [Google Colab](https://colab.research.google.com):
 
 ```bash
-!git clone https://github.com/LuigiPioFaletra/Machine-Learning-Project
+!git clone https://github.com/LuigiPioFaletra/Musical-Genres-Classifier
 ```
 ```bash
-%cd Machine-Learning-Project
+%cd Musical-Genres-Classifier
 ```
 ```bash
 %%bash prepare.sh
